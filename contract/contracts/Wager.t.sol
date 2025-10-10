@@ -25,9 +25,9 @@ contract WagerTest is Test {
         token.mint(creator, WAGER_AMOUNT * 10);
         token.mint(opponent, WAGER_AMOUNT * 10);
         
-        // Deploy wager contract as creator
-        vm.prank(creator);
+        // Deploy wager contract
         wager = new Wager(
+            creator,
             opponent,
             address(token),
             WAGER_AMOUNT,
@@ -177,7 +177,7 @@ contract WagerTest is Test {
     function test_RevertInvalidAmount() public {
         // Test that constructor reverts with invalid amount
         bool reverted = false;
-        try new Wager(opponent, address(token), 0, CREATOR_USERNAME, treasury) {
+        try new Wager(creator, opponent, address(token), 0, CREATOR_USERNAME, treasury) {
             // Should not reach here
         } catch {
             reverted = true;
@@ -187,9 +187,8 @@ contract WagerTest is Test {
 
     function test_RevertSamePlayer() public {
         // Test that constructor reverts when creator == opponent
-        vm.prank(creator);
         bool reverted = false;
-        try new Wager(creator, address(token), WAGER_AMOUNT, CREATOR_USERNAME, treasury) {
+        try new Wager(creator, creator, address(token), WAGER_AMOUNT, CREATOR_USERNAME, treasury) {
             // Should not reach here
         } catch {
             reverted = true;

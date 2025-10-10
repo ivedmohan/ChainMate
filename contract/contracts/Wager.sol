@@ -140,6 +140,7 @@ contract Wager is ReentrancyGuard {
 
     /**
      * @dev Initialize a new wager
+     * @param _creator Address of the creator
      * @param _opponent Address of the opponent
      * @param _token Address of the token (USDC or PYUSD)
      * @param _amount Amount each player must deposit
@@ -147,26 +148,27 @@ contract Wager is ReentrancyGuard {
      * @param _treasury Platform treasury address
      */
     constructor(
+        address _creator,
         address _opponent,
         address _token,
         uint256 _amount,
         string memory _creatorChessUsername,
         address _treasury
     ) {
-        if (_opponent == address(0) || _token == address(0) || _treasury == address(0)) {
+        if (_creator == address(0) || _opponent == address(0) || _token == address(0) || _treasury == address(0)) {
             revert InvalidToken();
         }
         if (_amount == 0) {
             revert InvalidAmount();
         }
-        if (msg.sender == _opponent) {
+        if (_creator == _opponent) {
             revert SamePlayer();
         }
 
         treasury = _treasury;
 
         wagerData = WagerData({
-            creator: msg.sender,
+            creator: _creator,
             opponent: _opponent,
             token: _token,
             amount: _amount,
