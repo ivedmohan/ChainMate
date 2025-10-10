@@ -187,6 +187,7 @@ contract WagerTest is Test {
 
     function test_RevertSamePlayer() public {
         // Test that constructor reverts when creator == opponent
+        vm.prank(creator);
         bool reverted = false;
         try new Wager(creator, address(token), WAGER_AMOUNT, CREATOR_USERNAME, treasury) {
             // Should not reach here
