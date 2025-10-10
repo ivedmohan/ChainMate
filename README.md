@@ -2,15 +2,14 @@
 
 A decentralized peer-to-peer wagering platform for chess games using zero-knowledge proofs for outcome verification.
 
-# 🎯 Prize Tracks
+## 🎯 Built For ETH Global Online 2025
 
-This project (ChainMate) is built for **ETH Global Online 2025** and targets the following prize tracks:
+ChainMate leverages cutting-edge technologies to create a trustless cross-chain wagering experience:
 
-1. **Avail Nexus - Best DeFi/Payments ($5,000)** - Cross-chain wagering with Bridge & Execute
-2. **Blockscout SDK Integration ($3,000)** - Transaction tracking and explorer integration
-3. **Hardhat 3 ($5,000)** - Built entirely with Hardhat 3 for testing and deployment
-
-**Total Prize Potential: $13,000**
+- **Avail Nexus SDK** - Seamless cross-chain wagering with Bridge & Execute
+- **Blockscout SDK** - Real-time transaction tracking and explorer integration  
+- **Hardhat 3** - Comprehensive testing and multi-chain deployment
+- **Reclaim Protocol** - Zero-knowledge proof verification of Chess.com games
 
 ## 🏗️ Architecture
 
@@ -42,7 +41,6 @@ This project (ChainMate) is built for **ETH Global Online 2025** and targets the
 
 ### Installation
 
-git clone <repo-url>
 ```bash
 # Clone the repository
 git clone <repo-url>
@@ -181,26 +179,20 @@ npx hardhat verify --network baseSepolia <contract-address>
 
 ## 📚 Documentation
 
-- [Requirements](/.kiro/specs/chainmate/requirements.md)
-- [Design](/.kiro/specs/chainmate/design.md)
-- [Tasks](/.kiro/specs/chainmate/tasks.md)
+- [Requirements](/.kiro/specs/p2p-zk-wagering/requirements.md)
+- [Design](/.kiro/specs/p2p-zk-wagering/design.md)
+- [Tasks](/.kiro/specs/p2p-zk-wagering/tasks.md)
 
-## 🏆 Prize Track Integration
+## 🛠️ Technology Integration
 
 ### Avail Nexus SDK
-- Cross-chain wager acceptance using Bridge & Execute
-- Seamless UX for players on different chains
-- See `contracts/CrossChainWagerManager.sol`
+Cross-chain wager acceptance using Bridge & Execute for seamless UX across Base and Arbitrum.
 
-### Blockscout SDK
-- Real-time transaction tracking
-- Wager history and explorer integration
-- See `frontend/src/components/TransactionExplorer.tsx`
+### Blockscout SDK  
+Real-time transaction tracking and wager history with integrated explorer functionality.
 
 ### Hardhat 3
-- Comprehensive test suite (Solidity + TypeScript)
-- Multi-chain deployment support
-- Gas optimization and profiling
+Comprehensive test suite with both Solidity and TypeScript tests, multi-chain deployment support.
 
 ## 🤝 Contributing
 
