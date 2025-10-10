@@ -1,57 +1,243 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+# ChainMate - P2P ZK Wagering Smart Contracts
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+Decentralized peer-to-peer wagering platform with zero-knowledge proof verification using Reclaim Protocol. Built on Base and Arbitrum Sepolia testnets.
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+## 🎯 Overview
 
-## Project Overview
+ChainMate enables trustless peer-to-peer wagers with privacy-preserving proof verification. Users can create wagers, accept challenges, and verify outcomes using zero-knowledge proofs without revealing sensitive data.
 
-This example project includes:
+### Key Features
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+- **Factory Pattern**: Single WagerFactory deploys individual Wager contracts on-demand
+- **Multi-Token Support**: USDC and PYUSD (Arbitrum only)
+- **ZK Proof Verification**: Reclaim Protocol integration for privacy-preserving verification
+- **Multi-Chain**: Deployed on Base Sepolia and Arbitrum Sepolia
+- **Trustless Escrow**: Funds locked in smart contracts until resolution
 
-## Usage
+## 📦 Deployed Contracts
 
-### Running Tests
+### Base Sepolia
+- **WagerFactory**: [`0x93000dbeaa7d1f204239230e55fe694220a35328`](https://sepolia.basescan.org/address/0x93000dbeaa7d1f204239230e55fe694220a35328)
+- **Chain ID**: 84532
+- **Supported Tokens**: 
+  - USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
 
-To run all the tests in the project, execute the following command:
+### Arbitrum Sepolia
+- **WagerFactory**: [`0xea778860f57f218b023be05c6013427b329d27d9`](https://sepolia.arbiscan.io/address/0xea778860f57f218b023be05c6013427b329d27d9)
+- **Chain ID**: 421614
+- **Supported Tokens**:
+  - USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+  - PYUSD: `0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1`
 
-```shell
+## 🚀 Quick Start
+
+### Prerequisites
+
+```bash
+node >= 18.0.0
+npm >= 9.0.0
+```
+
+### Installation
+
+```bash
+npm install
+```
+
+### Environment Setup
+
+Create a `.env` file:
+
+```bash
+# Private key for deployment (DO NOT commit your real private key!)
+PRIVATE_KEY=your_private_key_here
+
+# RPC URLs (optional - defaults provided)
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+
+# API keys for contract verification
+BASESCAN_API_KEY=your_basescan_api_key
+ARBISCAN_API_KEY=your_arbiscan_api_key
+
+# Reclaim Protocol credentials
+RECLAIM_APP_ID=0x88a06fa32b2063e0a989384EfBd956884C2F85ea
+RECLAIM_APP_SECRET=0x5d9228228f6b34725ea2eb77107335ebcd85bf6ef6611e9964c61cebee7d0faf
+```
+
+## 🧪 Testing
+
+Run all tests:
+
+```bash
 npx hardhat test
 ```
 
-You can also selectively run the Solidity or `node:test` tests:
+Run specific test suites:
 
-```shell
+```bash
+# Solidity tests only
 npx hardhat test solidity
+
+# TypeScript tests only
 npx hardhat test nodejs
 ```
 
-### Make a deployment to Sepolia
+## 🚢 Deployment
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+### Compile Contracts
 
-To run the deployment to a local chain:
-
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
+```bash
+npx hardhat compile
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+### Deploy to Testnets
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+Deploy to Base Sepolia:
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
-
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+```bash
+npx hardhat run scripts/deploy-viem.ts --network baseSepolia
 ```
 
-After setting the variable, you can run the deployment with the Sepolia network:
+Deploy to Arbitrum Sepolia:
 
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
+```bash
+npx hardhat run scripts/deploy-viem.ts --network arbitrumSepolia
 ```
+
+## 📖 Contract Architecture
+
+### WagerFactory
+
+The factory contract that deploys individual Wager contracts:
+
+- **createWager()**: Deploy a new wager contract
+- **getWagersByCreator()**: Get all wagers created by an address
+- **getWagersByParticipant()**: Get all wagers a user participated in
+- **updateTreasury()**: Update treasury address (owner only)
+- **addSupportedToken()**: Add new supported token (owner only)
+
+### Wager
+
+Individual wager contract with lifecycle management:
+
+- **acceptWager()**: Accept and join a wager
+- **submitProof()**: Submit ZK proof for verification
+- **resolveWager()**: Resolve wager based on proofs
+- **cancelWager()**: Cancel before acceptance
+- **claimRefund()**: Claim refund if expired
+
+### States
+
+```
+PENDING → ACTIVE → RESOLVED
+   ↓
+CANCELLED
+```
+
+## 🔐 Security Features
+
+- **Reentrancy Protection**: OpenZeppelin ReentrancyGuard
+- **Access Control**: Ownable pattern for admin functions
+- **Safe Token Transfers**: SafeERC20 for all token operations
+- **Proof Verification**: Reclaim Protocol integration
+- **Expiration Handling**: Time-based wager expiration
+
+## 🛠️ Development
+
+### Project Structure
+
+```
+contract/
+├── contracts/
+│   ├── WagerFactory.sol    # Factory for deploying wagers
+│   └── Wager.sol           # Individual wager contract
+├── scripts/
+│   └── deploy-viem.ts      # Deployment script
+├── test/
+│   └── wager.ts            # Test suite
+├── ignition/
+│   └── modules/            # Hardhat Ignition modules
+└── hardhat.config.ts       # Hardhat configuration
+```
+
+### Tech Stack
+
+- **Solidity**: ^0.8.28
+- **Hardhat**: 3.0.7
+- **Viem**: 2.38.0
+- **OpenZeppelin**: 5.4.0
+- **Reclaim Protocol**: ZK proof verification
+
+## 📝 Usage Example
+
+### Creating a Wager
+
+```typescript
+// 1. Approve token spending
+await token.approve(factoryAddress, wagerAmount);
+
+// 2. Create wager
+const tx = await factory.createWager(
+  tokenAddress,
+  wagerAmount,
+  expirationTime,
+  reclaimProofRequirements
+);
+
+// 3. Get wager address from event
+const receipt = await tx.wait();
+const wagerAddress = receipt.events[0].args.wagerAddress;
+```
+
+### Accepting a Wager
+
+```typescript
+// 1. Approve token spending
+await token.approve(wagerAddress, wagerAmount);
+
+// 2. Accept wager
+await wager.acceptWager();
+```
+
+### Submitting Proof
+
+```typescript
+// 1. Generate proof via Reclaim Protocol
+const proof = await reclaimClient.generateProof(data);
+
+// 2. Submit to contract
+await wager.submitProof(proof);
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🔗 Links
+
+- [Reclaim Protocol](https://reclaimprotocol.org/)
+- [Base Sepolia Faucet](https://www.coinbase.com/faucets/base-ethereum-goerli-faucet)
+- [Arbitrum Sepolia Faucet](https://faucet.quicknode.com/arbitrum/sepolia)
+- [Hardhat Documentation](https://hardhat.org/docs)
+
+## 📞 Support
+
+For questions or issues:
+- Open an issue on GitHub
+- Join our community Discord
+- Check the documentation
+
+---
+
+Built with ❤️ using Hardhat 3.0, Viem, and Reclaim Protocol

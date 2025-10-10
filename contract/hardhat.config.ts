@@ -1,5 +1,7 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
+import "@nomicfoundation/hardhat-ignition-viem";
+import "dotenv/config";
 
 const config: HardhatUserConfig = {
   solidity: {
