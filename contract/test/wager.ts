@@ -4,6 +4,7 @@ import hre from "hardhat";
 import { parseUnits } from "viem";
 import "@nomicfoundation/hardhat-toolbox-viem";
 
+// @ts-expect-error - viem is added by hardhat-toolbox-viem plugin
 const viem = hre.viem;
 
 describe("Wager Integration Tests", () => {
@@ -357,7 +358,7 @@ describe("Wager Integration Tests", () => {
 
   describe("Cancellation", () => {
     it("Should allow creator to cancel expired wager", async () => {
-      const { wager, mockToken, creator, wagerAmount } =
+      const { wager, mockToken, creator, wagerAmount, publicClient } =
         await deployWagerFixture();
 
       // Creator deposits
@@ -367,8 +368,15 @@ describe("Wager Integration Tests", () => {
       await wager.write.creatorDeposit([], { account: creator.account });
 
       // Fast forward time past expiry (24 hours)
-      await hre.network.provider.send("evm_increaseTime", [25 * 60 * 60]); // 25 hours
-      await hre.network.provider.send("evm_mine");
+      // Use test client methods for time manipulation
+      await publicClient.request({
+        method: "evm_increaseTime",
+        params: [25 * 60 * 60], // 25 hours in seconds
+      });
+      await publicClient.request({
+        method: "evm_mine",
+        params: [],
+      });
 
       // Get balance before cancel
       const balanceBefore = await mockToken.read.balanceOf([
