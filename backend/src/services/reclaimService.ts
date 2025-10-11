@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
 // Note: Using placeholder import - actual Reclaim SDK import may differ
 // import { ReclaimProofRequest } from '@reclaimprotocol/js-sdk';
 
