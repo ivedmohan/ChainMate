@@ -1,4 +1,25 @@
-import { ReclaimProofRequest } from '@reclaimprotocol/js-sdk';
+// Note: Using placeholder import - actual Reclaim SDK import may differ
+// import { ReclaimProofRequest } from '@reclaimprotocol/js-sdk';
+
+// Placeholder for Reclaim SDK - will be updated with actual SDK
+class ReclaimProofRequest {
+  static async init(appId: string, appSecret: string, context: string) {
+    return new ReclaimProofRequest();
+  }
+  
+  addContext(url: string, description: string) {
+    // Placeholder implementation
+  }
+  
+  setParams(params: any) {
+    // Placeholder implementation
+  }
+  
+  async getRequestUrl(): Promise<string> {
+    // Placeholder implementation
+    return `https://reclaim.example.com/proof-request/${Date.now()}`;
+  }
+}
 
 export interface ChessGameProof {
   gameId: string;
