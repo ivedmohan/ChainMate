@@ -24,7 +24,7 @@ export class ChessService {
 
   constructor() {
     this.baseUrl = process.env.CHESS_COM_API_BASE_URL || 'https://api.chess.com/pub';
-    
+
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 10000,
@@ -52,7 +52,7 @@ export class ChessService {
       throw new Error('Direct game ID lookup not supported. Please provide full Chess.com game URL or player context.');
     } catch (error) {
       console.error('❌ Error fetching Chess.com game data:', error);
-      
+
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 404) {
           throw new Error('Game not found on Chess.com');
@@ -60,7 +60,7 @@ export class ChessService {
           throw new Error('Rate limited by Chess.com API');
         }
       }
-      
+
       throw new Error(`Failed to fetch game data: ${error}`);
     }
   }
@@ -73,14 +73,14 @@ export class ChessService {
       // For Chess.com game URLs, we can sometimes extract the PGN directly
       // This is a simplified approach - in practice, you'd need to parse the HTML
       // or use Chess.com's official API methods
-      
+
       const gameId = this.extractGameId(gameUrl);
-      
+
       // Placeholder implementation - in reality, you'd need to:
       // 1. Parse the game URL to get player names and date
       // 2. Search through player's monthly archives
       // 3. Find the specific game by matching URL or timestamp
-      
+
       const mockGameData: ChessGameData = {
         gameId,
         white: { username: 'player1', rating: 1500 },
@@ -100,10 +100,10 @@ export class ChessService {
       }
 
       const game = gameData.game;
-      
+
       // Parse game result
       const result = this.parseGameResult(game);
-      
+
       const parsedGame: ChessGameData = {
         gameId: actualGameId,
         white: {
@@ -132,7 +132,7 @@ export class ChessService {
 
     } catch (error) {
       console.error('❌ Error fetching Chess.com game data:', error);
-      
+
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 404) {
           throw new Error('Game not found on Chess.com');
@@ -140,7 +140,7 @@ export class ChessService {
           throw new Error('Rate limited by Chess.com API');
         }
       }
-      
+
       throw new Error(`Failed to fetch game data: ${error}`);
     }
   }
@@ -151,7 +151,7 @@ export class ChessService {
   async validateGame(gameId: string): Promise<boolean> {
     try {
       const gameData = await this.getGameData(gameId);
-      
+
       // Check if game is completed
       if (!gameData.result || gameData.result === 'in_progress') {
         return false;
@@ -161,7 +161,7 @@ export class ChessService {
       const now = Date.now();
       const gameEndTime = gameData.endTime;
       const twentyFourHours = 24 * 60 * 60 * 1000;
-      
+
       if (now - gameEndTime > twentyFourHours) {
         console.warn('⚠️ Game is older than 24 hours');
         // Still valid, but log warning
@@ -187,7 +187,7 @@ export class ChessService {
 
       const parsedGames = games.slice(0, limit).map((game: any) => {
         const result = this.parseGameResult(game);
-        
+
         return {
           gameId: this.extractGameId(game.url),
           white: {

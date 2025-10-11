@@ -62,27 +62,24 @@ export class ReclaimService {
     try {
       console.log(`🔍 Generating proof request for game: ${request.gameId}`);
 
-      // Create Reclaim proof requesait ReclaimProofRequest.init(
+      // Create Reclaim proof request with Chess.com provider
+      const reclaimProofRequest = await ReclaimProofRequest.init(
         this.appId,
         this.appSecret,
-        'chess-game-verification'
+        '41ec4915-c413-4d4a-9c21-e8639f7997c2' // Chess.com provider ID
       );
 
-      // Configure the proof request for Chess.com game winner detection
-      // This should match the provider you configured in Reclaim dashboard
+      // Configure the proof request for Chess.com game
       reclaimProofRequest.addContext(
-        `https://chess.com/game/live/${request.gameId}`, // Chess.com game URL
-        'Chess.com Game Winner Verification'
+        `https://chess.com/game/live/${request.gameId}`,
+        'Chess.com Game Result Verification'
       );
 
       // Set parameters for the Chess.com provider
       reclaimProofRequest.setParams({
         gameUrl: `https://chess.com/game/live/${request.gameId}`,
         gameId: request.gameId,
-        expectedWinner: request.expectedWinner || null,
-        // Add any other parameters your Chess.com provider expects
-        extractWinner: true,
-        extractResult: true
+        expectedWinner: request.expectedWinner || null
       });
 
       // Generate the proof request URL
@@ -159,39 +156,49 @@ export class ReclaimService {
    */
   private extractGameDataFromProof(proofData: any): ChessGameProof {
     try {
-      // Parse the proof data to extract game information
-      const gameData = proofData.data;
+      // Parse the Reclaim proof context to extract game information
+      // This handles the specific format from Chess.com provider (41ec4915-c413-4d4a-9c21-e8639f7997c2)
+      const context = JSON.parse(proofData.claimData?.context || '{}');
+      const extractedParams = context.extractedParameters;
 
-      if (!gameData || !gameData.game) {
-        throw new Error('Invalid game data in proof');
+      if (!extractedParams) {
+        throw new Error('No extracted parameters found in proof');
       }
 
-      const game = gameData.game;
+      // Extract player information
+      const whitePlayer = extractedParams.white_paper || extractedParams.white_player || ''; // Handle typo in provider
+      const blackPlayer = extractedParams.black_player || '';
+      const gameResult = extractedParams.result || '';
 
-      // Extract winner information
+      // Determine winner based on result
       let winner = '';
-      let result = game.result || '';
+      let result = '';
 
-      if (result.includes('1-0')) {
-        winner = game.white?.username || '';
+      if (gameResult.includes('1-0') || gameResult.toLowerCase().includes('white')) {
+        winner = whitePlayer;
         result = 'white_wins';
-      } else if (result.includes('0-1')) {
-        winner = game.black?.username || '';
+      } else if (gameResult.includes('0-1') || gameResult.toLowerCase().includes('black')) {
+        winner = blackPlayer;
         result = 'black_wins';
-      } else if (result.includes('1/2-1/2')) {
+      } else if (gameResult.includes('1/2-1/2') || gameResult.toLowerCase().includes('draw')) {
         winner = '';
         result = 'draw';
       } else {
-        throw new Error('Unable to determine game result');
+        throw new Error(`Unable to determine game result from: ${gameResult}`);
       }
 
+      // Extract game ID from URL parameters if available
+      const gameId = extractedParams.URL_PARAMS_1_GRD || 
+                   proofData.claimData?.parameters || 
+                   'unknown';
+
       return {
-        gameId: game.uuid || game.id || '',
+        gameId,
         winner,
         result,
-        whitePlayer: game.white?.username || '',
-        blackPlayer: game.black?.username || '',
-        endTime: game.end_time || Date.now(),
+        whitePlayer,
+        blackPlayer,
+        endTime: parseInt(proofData.claimData?.timestampS || '0') * 1000,
         proof: proofData
       };
 

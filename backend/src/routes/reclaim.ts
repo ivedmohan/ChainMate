@@ -153,4 +153,43 @@ router.get('/proof-status/:requestId', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/reclaim/test-proof-format
+ * Test endpoint to validate proof format (development only)
+ */
+router.post('/test-proof-format', async (req, res) => {
+  try {
+    const { proof } = req.body;
+
+    if (!proof) {
+      return res.status(400).json({
+        error: 'Proof data is required'
+      });
+    }
+
+    // Parse and display the proof structure for debugging
+    const context = JSON.parse(proof.claimData?.context || '{}');
+    const extractedParams = context.extractedParameters;
+
+    res.json({
+      success: true,
+      debug: {
+        hasClaimData: !!proof.claimData,
+        hasContext: !!proof.claimData?.context,
+        hasExtractedParams: !!extractedParams,
+        extractedParams,
+        providerId: context.providerHash || 'unknown',
+        timestamp: proof.claimData?.timestampS
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error parsing proof format:', error);
+    res.status(500).json({
+      error: 'Failed to parse proof format',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export { router as reclaimRoutes };
