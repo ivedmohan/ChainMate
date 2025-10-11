@@ -305,25 +305,13 @@ contract ReclaimVerifier {
         GameProof memory gameData,
         address submitter
     ) internal view {
-        // Get wager data using the public getter
-        (
-            address creator,
-            address opponent,
-            ,  // token
-            ,  // amount
-            ,  // creatorChessUsername
-            ,  // opponentChessUsername
-            ,  // gameId
-            Wager.WagerState state,
-            ,  // winner
-            ,  // createdAt
-            ,  // fundedAt
-            ,  // expiresAt
-            ,  // settledAt
-            ,  // creatorDeposited
-            ,  // opponentDeposited
-            // platformFee
-        ) = wager.wagerData();
+        // Get wager data using the getter function
+        Wager.WagerData memory wagerData = wager.getWagerData();
+        
+        // Access struct fields directly
+        address creator = wagerData.creator;
+        address opponent = wagerData.opponent;
+        Wager.WagerState state = wagerData.state;
         
         // Check that wager is in correct state (GameLinked = 2)
         if (state != Wager.WagerState.GameLinked) {

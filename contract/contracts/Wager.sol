@@ -54,6 +54,10 @@ contract Wager is ReentrancyGuard {
     uint256 public constant PLATFORM_FEE_BPS = 200; // 2% in basis points
     uint256 public constant DRAW_FEE_BPS = 100;     // 1% each player for draws
     uint256 public constant EXPIRY_DURATION = 24 hours; // Time to accept wager
+    uint256 public constant SETTLEMENT_TIMEOUT = 7 days; // Time to complete game
+    
+    // Mutual cancellation votes
+    mapping(address => bool) public cancelVotes;
 
     // ============ Events ============
 
@@ -102,6 +106,7 @@ contract Wager is ReentrancyGuard {
     error WagerAlreadyFunded();
     error WagerNotFunded();
     error WagerExpired();
+    error WagerNotExpired();
     error WagerAlreadySettled();
     error UnauthorizedCaller();
     error InvalidProof();
@@ -166,6 +171,9 @@ contract Wager is ReentrancyGuard {
         }
         if (_creator == _opponent) {
             revert SamePlayer();
+        }
+        if (bytes(_creatorChessUsername).length == 0) {
+            revert InvalidProof();
         }
 
         treasury = _treasury;
@@ -242,6 +250,9 @@ contract Wager is ReentrancyGuard {
         if (wagerData.opponentDeposited) {
             revert WagerAlreadyFunded();
         }
+        if (bytes(_opponentChessUsername).length == 0) {
+            revert InvalidProof();
+        }
 
         wagerData.opponentChessUsername = _opponentChessUsername;
         wagerData.opponentDeposited = true;
@@ -266,6 +277,9 @@ contract Wager is ReentrancyGuard {
     {
         if (bytes(wagerData.gameId).length > 0) {
             revert GameAlreadyLinked();
+        }
+        if (bytes(_gameId).length == 0) {
+            revert InvalidProof();
         }
 
         wagerData.gameId = _gameId;
@@ -397,6 +411,48 @@ contract Wager is ReentrancyGuard {
         }
 
         emit WagerCancelled(msg.sender, "Expired or cancelled by creator");
+    }
+
+    /**
+     * @dev Claim timeout refund if game not completed within 7 days
+     */
+    function claimTimeout() external nonReentrant onlyParticipants {
+        if (wagerData.state != WagerState.GameLinked) {
+            revert InvalidState();
+        }
+        if (block.timestamp < wagerData.fundedAt + SETTLEMENT_TIMEOUT) {
+            revert WagerNotExpired();
+        }
+
+        wagerData.state = WagerState.Cancelled;
+        
+        // Refund both players
+        IERC20(wagerData.token).safeTransfer(wagerData.creator, wagerData.amount);
+        IERC20(wagerData.token).safeTransfer(wagerData.opponent, wagerData.amount);
+
+        emit WagerCancelled(msg.sender, "7-day timeout - game incomplete");
+    }
+
+    /**
+     * @dev Vote to cancel wager mutually (both players must agree)
+     */
+    function voteToCancelMutual() external nonReentrant onlyParticipants {
+        if (wagerData.state != WagerState.Funded && wagerData.state != WagerState.GameLinked) {
+            revert InvalidState();
+        }
+
+        cancelVotes[msg.sender] = true;
+
+        // If both players voted, cancel and refund
+        if (cancelVotes[wagerData.creator] && cancelVotes[wagerData.opponent]) {
+            wagerData.state = WagerState.Cancelled;
+            
+            // Refund both players
+            IERC20(wagerData.token).safeTransfer(wagerData.creator, wagerData.amount);
+            IERC20(wagerData.token).safeTransfer(wagerData.opponent, wagerData.amount);
+
+            emit WagerCancelled(msg.sender, "Mutual cancellation");
+        }
     }
 
     /**
