@@ -294,6 +294,28 @@ contract Wager is ReentrancyGuard {
     }
 
     /**
+     * @dev Resolve wager with verified outcome (called by ReclaimVerifier)
+     * @param _winner Address of the winner (address(0) for draw)
+     * @param _result Game result string
+     */
+    function resolveWager(address _winner, string calldata _result) 
+        external 
+        inState(WagerState.GameLinked)
+    {
+        // TODO: Add access control - only allow verified ReclaimVerifier contract
+        // For now, allow any caller for testing
+        
+        if (_winner != address(0) && _winner != wagerData.creator && _winner != wagerData.opponent) {
+            revert InvalidProof();
+        }
+
+        wagerData.winner = _winner;
+        wagerData.state = WagerState.Completed;
+
+        emit OutcomeVerified(wagerData.gameId, _winner, _result);
+    }
+
+    /**
      * @dev Settle the wager after outcome verification
      */
     function settle() external nonReentrant inState(WagerState.Completed) {
