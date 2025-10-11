@@ -81,6 +81,8 @@ export class ChessService {
       // 2. Search through player's monthly archives
       // 3. Find the specific game by matching URL or timestamp
 
+      // For now, return mock data since Chess.com doesn't have direct game ID lookup
+      // In production, you'd need to implement proper game URL parsing or player archive search
       const mockGameData: ChessGameData = {
         gameId,
         white: { username: 'player1', rating: 1500 },
@@ -93,42 +95,8 @@ export class ChessService {
         url: gameUrl
       };
 
+      console.log('✅ Mock game data returned for:', gameId);
       return mockGameData;
-
-      if (!gameData || !gameData.game) {
-        throw new Error('Game not found or invalid response');
-      }
-
-      const game = gameData.game;
-
-      // Parse game result
-      const result = this.parseGameResult(game);
-
-      const parsedGame: ChessGameData = {
-        gameId: actualGameId,
-        white: {
-          username: game.white?.username || '',
-          rating: game.white?.rating || 0
-        },
-        black: {
-          username: game.black?.username || '',
-          rating: game.black?.rating || 0
-        },
-        result: result.result,
-        winner: result.winner,
-        endTime: game.end_time * 1000, // Convert to milliseconds
-        timeControl: game.time_control || '',
-        rated: game.rated || false,
-        url: game.url || `https://chess.com/game/live/${actualGameId}`
-      };
-
-      console.log('✅ Game data fetched successfully:', {
-        gameId: parsedGame.gameId,
-        result: parsedGame.result,
-        winner: parsedGame.winner
-      });
-
-      return parsedGame;
 
     } catch (error) {
       console.error('❌ Error fetching Chess.com game data:', error);

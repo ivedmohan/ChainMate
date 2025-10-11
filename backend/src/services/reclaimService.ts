@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import the real Reclaim Protocol SDK
-import { ReclaimProofRequest, verifyProof } from '@reclaimprotocol/js-sdk';
+import { Reclaim } from '@reclaimprotocol/js-sdk';
 
 export interface ChessGameProof {
   gameId: string;
@@ -42,24 +42,27 @@ export class ReclaimService {
     try {
       console.log(`🔍 Generating proof request for game: ${request.gameId}`);
 
-      // Create Reclaim proof request with Chess.com provider (following official docs)
-      const reclaimProofRequest = await ReclaimProofRequest.init(
-        this.appId,
-        this.appSecret,
-        '41ec4915-c413-4d4a-9c21-e8639f7997c2' // Chess.com provider ID
-      );
+      // Create Reclaim proof request with Chess.com provider
+      const reclaimProofRequest = new Reclaim.ProofRequest(this.appId);
 
       // Set callback URL for proof verification
       const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
       reclaimProofRequest.setAppCallbackUrl(`${baseUrl}/api/reclaim/receive-proofs`);
 
-      // Generate the proof request configuration
-      const reclaimProofRequestConfig = reclaimProofRequest.toJsonString();
-      
-      console.log(`✅ Proof request config generated for game: ${request.gameId}`);
-      
-      // Return the configuration that the frontend will use
-      return reclaimProofRequestConfig;
+      // Build proof request for Chess.com provider
+      await reclaimProofRequest.buildProofRequest('41ec4915-c413-4d4a-9c21-e8639f7997c2');
+
+      // Generate signature
+      const signature = await reclaimProofRequest.generateSignature(this.appSecret);
+      reclaimProofRequest.setSignature(signature);
+
+      // Create verification request
+      const verificationRequest = await reclaimProofRequest.createVerificationRequest();
+
+      console.log(`✅ Proof request generated for game: ${request.gameId}`);
+
+      // Return the request URL that the frontend will use
+      return verificationRequest.requestUrl;
 
     } catch (error) {
       console.error('❌ Error generating proof request:', error);
@@ -74,8 +77,8 @@ export class ReclaimService {
     try {
       console.log('🔍 Verifying Reclaim proof...');
 
-      // Verify the proof using Reclaim SDK (following official docs)
-      const isValid = await verifyProof(proofData);
+      // Verify the proof using Reclaim SDK
+      const isValid = await Reclaim.verifySignedProof(proofData);
       if (!isValid) {
         throw new Error('Invalid proof signature');
       }
@@ -161,9 +164,9 @@ export class ReclaimService {
       }
 
       // Extract game ID from URL parameters if available
-      const gameId = extractedParams.URL_PARAMS_1_GRD || 
-                   proofData.claimData?.parameters || 
-                   'unknown';
+      const gameId = extractedParams.URL_PARAMS_1_GRD ||
+        proofData.claimData?.parameters ||
+        'unknown';
 
       return {
         gameId,

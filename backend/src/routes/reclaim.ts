@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Reclaim } from '@reclaimprotocol/js-sdk';
 import { reclaimService } from '../services/reclaimService';
 import { chessService } from '../services/chessService';
 import { validateRequest } from '../middleware/validation';
@@ -156,30 +157,39 @@ router.get('/proof-status/:requestId', async (req, res) => {
 /**
  * POST /api/reclaim/receive-proofs
  * Callback endpoint to receive proofs from Reclaim Protocol
+ * Following the official documentation pattern
  */
 router.post('/receive-proofs', async (req, res) => {
   try {
     console.log('📥 Received proof from Reclaim Protocol');
 
-    // Decode the urlencoded proof object
+    // Decode the urlencoded proof object (as per documentation)
     const decodedBody = decodeURIComponent(req.body);
     const proof = JSON.parse(decodedBody);
 
-    // Verify the proof using the SDK
-    const isValid = await reclaimService.verifyProof(proof);
+    // Verify the proof using the SDK verifySignedProof function
+    const result = await Reclaim.verifySignedProof(proof);
     
-    if (!isValid) {
+    if (!result) {
       console.error('❌ Invalid proof received');
-      return res.status(400).json({ error: 'Invalid proof data' });
+      return res.status(400).json({ error: 'Invalid proofs data' });
     }
 
-    console.log('✅ Proof verified successfully:', {
-      gameId: proof.claimData?.parameters || 'unknown',
-      timestamp: proof.claimData?.timestampS
-    });
+    console.log('✅ Received proofs:', proof);
+    
+    // Extract game data for processing
+    try {
+      const gameData = await reclaimService.verifyProof(proof);
+      console.log('🎮 Game data extracted:', {
+        gameId: gameData.gameId,
+        winner: gameData.winner,
+        result: gameData.result
+      });
+    } catch (extractError) {
+      console.warn('⚠️ Could not extract game data:', extractError);
+    }
 
-    // Here you could store the proof or trigger additional business logic
-    // For now, we just acknowledge receipt
+    // Process the proofs here - you could store them, trigger smart contract calls, etc.
     return res.sendStatus(200);
 
   } catch (error) {
