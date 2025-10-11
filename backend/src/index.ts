@@ -25,7 +25,8 @@ app.use(rateLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Use express.text for Reclaim proof callbacks (as per documentation)
+app.use(express.text({ type: '*/*', limit: '50mb' }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

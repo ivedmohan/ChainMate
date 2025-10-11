@@ -154,6 +154,44 @@ router.get('/proof-status/:requestId', async (req, res) => {
 });
 
 /**
+ * POST /api/reclaim/receive-proofs
+ * Callback endpoint to receive proofs from Reclaim Protocol
+ */
+router.post('/receive-proofs', async (req, res) => {
+  try {
+    console.log('📥 Received proof from Reclaim Protocol');
+
+    // Decode the urlencoded proof object
+    const decodedBody = decodeURIComponent(req.body);
+    const proof = JSON.parse(decodedBody);
+
+    // Verify the proof using the SDK
+    const isValid = await reclaimService.verifyProof(proof);
+    
+    if (!isValid) {
+      console.error('❌ Invalid proof received');
+      return res.status(400).json({ error: 'Invalid proof data' });
+    }
+
+    console.log('✅ Proof verified successfully:', {
+      gameId: proof.claimData?.parameters || 'unknown',
+      timestamp: proof.claimData?.timestampS
+    });
+
+    // Here you could store the proof or trigger additional business logic
+    // For now, we just acknowledge receipt
+    return res.sendStatus(200);
+
+  } catch (error) {
+    console.error('❌ Error processing received proof:', error);
+    return res.status(500).json({
+      error: 'Failed to process proof',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * POST /api/reclaim/test-proof-format
  * Test endpoint to validate proof format (development only)
  */
