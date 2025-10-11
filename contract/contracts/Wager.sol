@@ -50,6 +50,7 @@ contract Wager is ReentrancyGuard {
 
     WagerData public wagerData;
     address public immutable treasury;  // Platform treasury for fees
+    address public immutable reclaimVerifier;  // ReclaimVerifier contract address
     uint256 public constant PLATFORM_FEE_BPS = 200; // 2% in basis points
     uint256 public constant DRAW_FEE_BPS = 100;     // 1% each player for draws
     uint256 public constant EXPIRY_DURATION = 24 hours; // Time to accept wager
@@ -146,6 +147,7 @@ contract Wager is ReentrancyGuard {
      * @param _amount Amount each player must deposit
      * @param _creatorChessUsername Creator's Chess.com username
      * @param _treasury Platform treasury address
+     * @param _reclaimVerifier ReclaimVerifier contract address
      */
     constructor(
         address _creator,
@@ -153,9 +155,10 @@ contract Wager is ReentrancyGuard {
         address _token,
         uint256 _amount,
         string memory _creatorChessUsername,
-        address _treasury
+        address _treasury,
+        address _reclaimVerifier
     ) {
-        if (_creator == address(0) || _opponent == address(0) || _token == address(0) || _treasury == address(0)) {
+        if (_creator == address(0) || _opponent == address(0) || _token == address(0) || _treasury == address(0) || _reclaimVerifier == address(0)) {
             revert InvalidToken();
         }
         if (_amount == 0) {
@@ -166,6 +169,7 @@ contract Wager is ReentrancyGuard {
         }
 
         treasury = _treasury;
+        reclaimVerifier = _reclaimVerifier;
 
         wagerData = WagerData({
             creator: _creator,
@@ -187,7 +191,7 @@ contract Wager is ReentrancyGuard {
         });
 
         emit WagerCreated(
-            msg.sender,
+            _creator,  // Fixed: use parameter, not msg.sender (which would be Factory)
             _opponent,
             _token,
             _amount,
@@ -302,8 +306,10 @@ contract Wager is ReentrancyGuard {
         external 
         inState(WagerState.GameLinked)
     {
-        // TODO: Add access control - only allow verified ReclaimVerifier contract
-        // For now, allow any caller for testing
+        // Access control: Only ReclaimVerifier can call this
+        if (msg.sender != reclaimVerifier) {
+            revert UnauthorizedCaller();
+        }
         
         if (_winner != address(0) && _winner != wagerData.creator && _winner != wagerData.opponent) {
             revert InvalidProof();

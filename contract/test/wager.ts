@@ -34,15 +34,20 @@ describe("Wager Integration Tests", () => {
       parseUnits("1000", 6),
     ]);
 
+    // Deploy ReclaimVerifier first
+    const reclaimVerifier = await viem.deployContract("ReclaimVerifier");
+
     // Deploy Wager contract with proper contract address
     const wager = await viem.deployContract(
       "Wager",
       [
-        opponent.account.address,
-        mockToken.contract.address, // Fixed: use contract.address
-        wagerAmount,
-        creatorUsername,
-        treasury.account.address,
+        creator.account.address,      // creator
+        opponent.account.address,     // opponent
+        mockToken.contract.address,   // token
+        wagerAmount,                  // amount
+        creatorUsername,              // creatorChessUsername
+        treasury.account.address,     // treasury
+        reclaimVerifier.address,      // reclaimVerifier
       ],
       { client: { wallet: creator } }
     );

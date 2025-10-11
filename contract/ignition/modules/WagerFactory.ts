@@ -15,10 +15,13 @@ const WagerFactoryModule = buildModule("WagerFactoryModule", (m) => {
   // Get supported tokens - will be set via parameters when deploying
   const supportedTokens = m.getParameter("supportedTokens", [baseUsdc]);
   
-  // Deploy WagerFactory
-  const wagerFactory = m.contract("WagerFactory", [treasury, supportedTokens]);
+  // Deploy ReclaimVerifier first
+  const reclaimVerifier = m.contract("ReclaimVerifier");
   
-  return { wagerFactory };
+  // Deploy WagerFactory with ReclaimVerifier address
+  const wagerFactory = m.contract("WagerFactory", [treasury, supportedTokens, reclaimVerifier]);
+  
+  return { wagerFactory, reclaimVerifier };
 });
 
 export default WagerFactoryModule;

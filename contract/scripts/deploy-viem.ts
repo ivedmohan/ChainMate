@@ -70,13 +70,37 @@ async function main() {
         transport: http(rpcUrl),
     });
 
-    // Deploy contract
+    // Deploy ReclaimVerifier first
+    console.log("\n📝 Deploying ReclaimVerifier...");
+    
+    const verifierArtifactPath = join(process.cwd(), 'artifacts/contracts/ReclaimVerifier.sol/ReclaimVerifier.json');
+    const verifierArtifact = JSON.parse(readFileSync(verifierArtifactPath, 'utf8'));
+    
+    const verifierHash = await walletClient.deployContract({
+        abi: verifierArtifact.abi,
+        bytecode: verifierArtifact.bytecode as `0x${string}`,
+        args: [],
+    });
+    
+    console.log("ReclaimVerifier transaction hash:", verifierHash);
+    console.log("Waiting for confirmation...");
+    
+    const verifierReceipt = await publicClient.waitForTransactionReceipt({ hash: verifierHash });
+    const verifierAddress = verifierReceipt.contractAddress;
+    
+    if (!verifierAddress) {
+        throw new Error("ReclaimVerifier deployment failed - no address returned");
+    }
+    
+    console.log("✅ ReclaimVerifier deployed at:", verifierAddress);
+
+    // Deploy WagerFactory with ReclaimVerifier address
     console.log("\n📝 Deploying WagerFactory...");
 
     const hash = await walletClient.deployContract({
         abi: artifact.abi,
         bytecode: artifact.bytecode as `0x${string}`,
-        args: [account.address, supportedTokens],
+        args: [account.address, supportedTokens, verifierAddress],
     });
 
     console.log("Transaction hash:", hash);
@@ -108,6 +132,7 @@ async function main() {
     const deployment = {
         network: actualNetwork,
         chainId: chain.id,
+        reclaimVerifier: verifierAddress,
         wagerFactory: address,
         treasury: account.address,
         supportedTokens,

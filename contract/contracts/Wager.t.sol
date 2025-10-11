@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { Test } from "forge-std/Test.sol";
 import { Wager } from "./Wager.sol";
+import { ReclaimVerifier } from "./ReclaimVerifier.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 
 contract WagerTest is Test {
@@ -25,6 +26,9 @@ contract WagerTest is Test {
         token.mint(creator, WAGER_AMOUNT * 10);
         token.mint(opponent, WAGER_AMOUNT * 10);
         
+        // Deploy ReclaimVerifier
+        ReclaimVerifier verifier = new ReclaimVerifier();
+        
         // Deploy wager contract
         wager = new Wager(
             creator,
@@ -32,7 +36,8 @@ contract WagerTest is Test {
             address(token),
             WAGER_AMOUNT,
             CREATOR_USERNAME,
-            treasury
+            treasury,
+            address(verifier)
         );
     }
 
@@ -177,7 +182,8 @@ contract WagerTest is Test {
     function test_RevertInvalidAmount() public {
         // Test that constructor reverts with invalid amount
         bool reverted = false;
-        try new Wager(creator, opponent, address(token), 0, CREATOR_USERNAME, treasury) {
+        ReclaimVerifier verifier = new ReclaimVerifier();
+        try new Wager(creator, opponent, address(token), 0, CREATOR_USERNAME, treasury, address(verifier)) {
             // Should not reach here
         } catch {
             reverted = true;
@@ -188,7 +194,8 @@ contract WagerTest is Test {
     function test_RevertSamePlayer() public {
         // Test that constructor reverts when creator == opponent
         bool reverted = false;
-        try new Wager(creator, creator, address(token), WAGER_AMOUNT, CREATOR_USERNAME, treasury) {
+        ReclaimVerifier verifier = new ReclaimVerifier();
+        try new Wager(creator, creator, address(token), WAGER_AMOUNT, CREATOR_USERNAME, treasury, address(verifier)) {
             // Should not reach here
         } catch {
             reverted = true;

@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import { Test } from "forge-std/Test.sol";
 import { WagerFactory } from "./WagerFactory.sol";
 import { Wager } from "./Wager.sol";
+import { ReclaimVerifier } from "./ReclaimVerifier.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 
 contract WagerFactoryTest is Test {
@@ -27,8 +28,11 @@ contract WagerFactoryTest is Test {
         supportedTokens[0] = address(usdc);
         supportedTokens[1] = address(pyusd);
         
+        // Deploy ReclaimVerifier
+        ReclaimVerifier verifier = new ReclaimVerifier();
+        
         // Deploy factory
-        factory = new WagerFactory(treasury, supportedTokens);
+        factory = new WagerFactory(treasury, supportedTokens, address(verifier));
         
         // Mint tokens to creator
         usdc.mint(creator, WAGER_AMOUNT * 10);

@@ -11,6 +11,7 @@ contract WagerFactory {
     // ============ State Variables ============
     
     address public immutable treasury;
+    address public immutable reclaimVerifier;
     address[] public allWagers;
     
     // Supported tokens (USDC and PYUSD on Base and Arbitrum)
@@ -43,10 +44,17 @@ contract WagerFactory {
     
     // ============ Constructor ============
     
-    constructor(address _treasury, address[] memory _supportedTokens) {
-        if (_treasury == address(0)) revert InvalidAddress();
+    constructor(
+        address _treasury,
+        address[] memory _supportedTokens,
+        address _reclaimVerifier
+    ) {
+        if (_treasury == address(0) || _reclaimVerifier == address(0)) {
+            revert InvalidAddress();
+        }
         
         treasury = _treasury;
+        reclaimVerifier = _reclaimVerifier;
         
         // Add supported tokens
         for (uint256 i = 0; i < _supportedTokens.length; i++) {
@@ -73,14 +81,15 @@ contract WagerFactory {
     ) external returns (address wagerAddress) {
         if (!supportedTokens[_token]) revert TokenNotSupported();
         
-        // Deploy new Wager contract
+        // Deploy new Wager contract with ReclaimVerifier address
         Wager wager = new Wager(
             msg.sender,  // creator
             _opponent,
             _token,
             _amount,
             _creatorChessUsername,
-            treasury
+            treasury,
+            reclaimVerifier  // Pass ReclaimVerifier address
         );
         
         wagerAddress = address(wager);

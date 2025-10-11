@@ -138,7 +138,7 @@ contract ReclaimVerifier {
         bytes calldata proof,
         address whitePlayerAddress,
         address blackPlayerAddress
-    ) public pure returns (GameProof memory gameData) {
+    ) public view returns (GameProof memory gameData) {
         // Parse the proof data structure
         // Note: This is a simplified implementation
         // In production, you'd integrate with Reclaim's on-chain verifier
@@ -181,7 +181,7 @@ contract ReclaimVerifier {
         bytes calldata proof,
         address whitePlayerAddress,
         address blackPlayerAddress
-    ) internal pure returns (GameProof memory gameData) {
+    ) internal view returns (GameProof memory gameData) {
         // Convert bytes to string for JSON parsing
         string memory proofJson = string(proof);
         
@@ -221,7 +221,7 @@ contract ReclaimVerifier {
     /**
      * @dev Extract timestamp from Reclaim proof JSON
      */
-    function _extractTimestamp(string memory proofJson) internal pure returns (uint256) {
+    function _extractTimestamp(string memory /* proofJson */) internal view returns (uint256) {
         // Simple timestamp extraction (in production, use a proper JSON parser)
         // For now, return current timestamp - 1 hour as placeholder
         return block.timestamp - 1 hours;
@@ -230,7 +230,7 @@ contract ReclaimVerifier {
     /**
      * @dev Extract game parameters from Reclaim proof
      */
-    function _extractGameParams(string memory proofJson) 
+    function _extractGameParams(string memory /* proofJson */) 
         internal 
         pure 
         returns (string memory whitePlayer, string memory blackPlayer, string memory result) 
@@ -305,28 +305,40 @@ contract ReclaimVerifier {
         GameProof memory gameData,
         address submitter
     ) internal view {
-        // Get wager data
-        Wager.WagerData memory wagerData = wager.wagerData();
+        // Get wager data using the public getter
+        (
+            address creator,
+            address opponent,
+            ,  // token
+            ,  // amount
+            ,  // creatorChessUsername
+            ,  // opponentChessUsername
+            ,  // gameId
+            Wager.WagerState state,
+            ,  // winner
+            ,  // createdAt
+            ,  // fundedAt
+            ,  // expiresAt
+            ,  // settledAt
+            ,  // creatorDeposited
+            ,  // opponentDeposited
+            // platformFee
+        ) = wager.wagerData();
         
-        // Check that wager is in correct state
-        if (wagerData.state != Wager.WagerState.GameLinked) {
+        // Check that wager is in correct state (GameLinked = 2)
+        if (state != Wager.WagerState.GameLinked) {
             revert WagerNotActive();
         }
         
         // Verify submitter is a participant
-        if (submitter != wagerData.creator && submitter != wagerData.opponent) {
+        if (submitter != creator && submitter != opponent) {
             revert UnauthorizedSubmitter();
         }
         
-        // Verify winner is a participant
-        if (gameData.winner != wagerData.creator && gameData.winner != wagerData.opponent) {
+        // Verify winner is a participant (or address(0) for draw)
+        if (gameData.winner != creator && gameData.winner != opponent && gameData.winner != address(0)) {
             revert InvalidGameData();
         }
-        
-        // Additional validation could include:
-        // - Checking Chess.com usernames match wager participants
-        // - Verifying game ID matches linked game
-        // - Ensuring game was played after wager creation
     }
     
     // ============ View Functions ============
