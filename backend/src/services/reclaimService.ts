@@ -11,15 +11,15 @@ class ReclaimProofRequest {
   static async init(appId: string, appSecret: string, context: string) {
     return new ReclaimProofRequest();
   }
-  
+
   addContext(url: string, description: string) {
     // Placeholder implementation
   }
-  
+
   setParams(params: any) {
     // Placeholder implementation
   }
-  
+
   async getRequestUrl(): Promise<string> {
     // Placeholder implementation
     return `https://reclaim.example.com/proof-request/${Date.now()}`;
@@ -48,7 +48,7 @@ export class ReclaimService {
   constructor() {
     this.appId = process.env.RECLAIM_APP_ID!;
     this.appSecret = process.env.RECLAIM_APP_SECRET!;
-    
+
     if (!this.appId || !this.appSecret) {
       throw new Error('Reclaim credentials not configured');
     }
@@ -82,7 +82,7 @@ export class ReclaimService {
 
       // Generate the proof request URL
       const requestUrl = await reclaimProofRequest.getRequestUrl();
-      
+
       console.log(`✅ Proof request generated: ${requestUrl}`);
       return requestUrl;
 
@@ -107,7 +107,7 @@ export class ReclaimService {
 
       // Extract game data from the proof
       const gameData = this.extractGameDataFromProof(proofData);
-      
+
       console.log('✅ Proof verified successfully');
       return gameData;
 
@@ -124,7 +124,7 @@ export class ReclaimService {
     try {
       // TODO: Implement actual signature validation using Reclaim SDK
       // This is a placeholder - the actual implementation depends on Reclaim's verification methods
-      
+
       // Basic validation checks
       if (!proofData || !proofData.signature || !proofData.data) {
         return false;
@@ -134,7 +134,7 @@ export class ReclaimService {
       const proofTimestamp = proofData.timestamp || 0;
       const now = Date.now();
       const oneHour = 60 * 60 * 1000;
-      
+
       if (now - proofTimestamp > oneHour) {
         console.warn('⚠️ Proof is too old');
         return false;
@@ -156,17 +156,17 @@ export class ReclaimService {
     try {
       // Parse the proof data to extract game information
       const gameData = proofData.data;
-      
+
       if (!gameData || !gameData.game) {
         throw new Error('Invalid game data in proof');
       }
 
       const game = gameData.game;
-      
+
       // Extract winner information
       let winner = '';
       let result = game.result || '';
-      
+
       if (result.includes('1-0')) {
         winner = game.white?.username || '';
         result = 'white_wins';
@@ -203,7 +203,7 @@ export class ReclaimService {
     try {
       // TODO: Implement proof status checking using Reclaim SDK
       console.log(`🔍 Checking proof status for request: ${requestId}`);
-      
+
       // Placeholder implementation
       return {
         requestId,
