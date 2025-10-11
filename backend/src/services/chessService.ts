@@ -36,17 +36,64 @@ export class ChessService {
 
   /**
    * Fetch game data from Chess.com API
+   * Note: Chess.com doesn't have a direct /game/:id endpoint
+   * We need to search through player's game archives or use the game URL directly
    */
   async getGameData(gameId: string): Promise<ChessGameData> {
     try {
       console.log(`🔍 Fetching Chess.com game data for: ${gameId}`);
 
-      // Chess.com game URLs can be in different formats
-      // Extract the actual game ID if it's a full URL
-      const actualGameId = this.extractGameId(gameId);
+      // If it's a full Chess.com URL, we can extract game info differently
+      if (gameId.includes('chess.com')) {
+        return await this.getGameDataFromUrl(gameId);
+      }
+
+      // For now, throw an error since we need more context (player name or game URL)
+      throw new Error('Direct game ID lookup not supported. Please provide full Chess.com game URL or player context.');
+    } catch (error) {
+      console.error('❌ Error fetching Chess.com game data:', error);
       
-      const response = await this.axiosInstance.get(`/game/${actualGameId}`);
-      const gameData = response.data;
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new Error('Game not found on Chess.com');
+        } else if (error.response?.status === 429) {
+          throw new Error('Rate limited by Chess.com API');
+        }
+      }
+      
+      throw new Error(`Failed to fetch game data: ${error}`);
+    }
+  }
+
+  /**
+   * Get game data from a Chess.com game URL
+   */
+  private async getGameDataFromUrl(gameUrl: string): Promise<ChessGameData> {
+    try {
+      // For Chess.com game URLs, we can sometimes extract the PGN directly
+      // This is a simplified approach - in practice, you'd need to parse the HTML
+      // or use Chess.com's official API methods
+      
+      const gameId = this.extractGameId(gameUrl);
+      
+      // Placeholder implementation - in reality, you'd need to:
+      // 1. Parse the game URL to get player names and date
+      // 2. Search through player's monthly archives
+      // 3. Find the specific game by matching URL or timestamp
+      
+      const mockGameData: ChessGameData = {
+        gameId,
+        white: { username: 'player1', rating: 1500 },
+        black: { username: 'player2', rating: 1600 },
+        result: 'white_wins',
+        winner: 'player1',
+        endTime: Date.now(),
+        timeControl: '10+0',
+        rated: true,
+        url: gameUrl
+      };
+
+      return mockGameData;
 
       if (!gameData || !gameData.game) {
         throw new Error('Game not found or invalid response');

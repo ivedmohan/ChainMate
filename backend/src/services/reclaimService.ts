@@ -56,28 +56,33 @@ export class ReclaimService {
 
   /**
    * Generate a proof request for Chess.com game verification
+   * Uses provider ID: 41ec4915-c413-4d4a-9c21-e8639f7997c2
    */
   async generateProofRequest(request: ProofGenerationRequest): Promise<string> {
     try {
       console.log(`🔍 Generating proof request for game: ${request.gameId}`);
 
-      // Create Reclaim proof request
-      const reclaimProofRequest = await ReclaimProofRequest.init(
+      // Create Reclaim proof requesait ReclaimProofRequest.init(
         this.appId,
         this.appSecret,
         'chess-game-verification'
       );
 
-      // Configure the proof request for Chess.com API
+      // Configure the proof request for Chess.com game winner detection
+      // This should match the provider you configured in Reclaim dashboard
       reclaimProofRequest.addContext(
-        `https://api.chess.com/pub/game/${request.gameId}`,
-        'Chess.com Game Result Verification'
+        `https://chess.com/game/live/${request.gameId}`, // Chess.com game URL
+        'Chess.com Game Winner Verification'
       );
 
-      // Set parameters for the proof
+      // Set parameters for the Chess.com provider
       reclaimProofRequest.setParams({
+        gameUrl: `https://chess.com/game/live/${request.gameId}`,
         gameId: request.gameId,
-        expectedWinner: request.expectedWinner || null
+        expectedWinner: request.expectedWinner || null,
+        // Add any other parameters your Chess.com provider expects
+        extractWinner: true,
+        extractResult: true
       });
 
       // Generate the proof request URL
