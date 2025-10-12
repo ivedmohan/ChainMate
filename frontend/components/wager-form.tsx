@@ -168,7 +168,8 @@ export function WagerForm() {
         title: "Wager confirmed!",
         description: "Your wager has been created on-chain. Redirecting to dashboard...",
       })
-      setTimeout(() => router.push('/dashboard'), 2000)
+      // Redirect immediately when transaction is confirmed
+      router.push('/dashboard')
     }
   }, [isCreateSuccess, router])
 

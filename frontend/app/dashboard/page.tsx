@@ -1,11 +1,14 @@
 "use client"
 
+import React from "react"
 import { useAccount } from "wagmi"
-import { useUserWagers, useAllWagers, useWagerData, useSupportedTokens } from "@/lib/hooks"
+import { useUserWagers, useAllWagers, useWagerData, useSupportedTokens, useInvalidateWagerQueries } from "@/lib/hooks"
 import { WagerCard } from "@/components/wager-card"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { RefreshButton } from "@/components/refresh-button"
 import { formatTokenAmount } from "@/lib/hooks"
+import { RefreshCw } from "lucide-react"
 import type { Address } from "viem"
 
 // Convert contract wager data to our frontend format
@@ -295,6 +298,29 @@ function AvailableWagerCard({
 
 export default function DashboardPage() {
   const { address: userAddress, isConnected } = useAccount()
+  const { invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
+  
+  // Auto-refresh when page becomes visible
+  React.useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userAddress) {
+        // Refresh wager data when user returns to the page
+        invalidateUserWagers()
+        invalidateAllWagers()
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [userAddress, invalidateUserWagers, invalidateAllWagers])
+  
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    if (userAddress) {
+      invalidateUserWagers()
+      invalidateAllWagers()
+    }
+  }
 
   if (!isConnected || !userAddress) {
     return (
@@ -314,9 +340,18 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-balance">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your wagers and find new opponents.</p>
+      <header className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-balance">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your wagers and find new opponents.</p>
+        </div>
+        <button
+          onClick={handleManualRefresh}
+          className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </button>
       </header>
       
       <div className="space-y-8">

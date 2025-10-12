@@ -7,6 +7,9 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Navbar } from "@/components/navbar"
 import { Web3Provider } from "@/components/web3-provider"
+import { RealTimeIndicator } from "@/components/real-time-indicator"
+import { VisibilityRefreshProvider } from "@/components/visibility-refresh-provider"
+import { DataUpdateNotifier } from "@/components/data-update-notifier"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
@@ -26,9 +29,13 @@ export default function RootLayout({
         <Web3Provider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Suspense fallback={<div>Loading...</div>}>
-              <Navbar />
-              <main className="min-h-[calc(100dvh-64px)]">{children}</main>
-              <Toaster />
+              <VisibilityRefreshProvider>
+                <Navbar />
+                <RealTimeIndicator />
+                <DataUpdateNotifier />
+                <main className="min-h-[calc(100dvh-64px)]">{children}</main>
+                <Toaster />
+              </VisibilityRefreshProvider>
             </Suspense>
           </ThemeProvider>
         </Web3Provider>

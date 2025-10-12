@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
+import { RefreshButton } from "@/components/refresh-button"
 import { useState, useMemo, useEffect } from "react"
 import type { Address } from "viem"
 
@@ -24,7 +25,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const { address: userAddress } = useAccount()
   const supportedTokens = useSupportedTokens()
   const { wagerFactory } = useContractAddresses()
-  const { data: wagerData, isLoading, error, refetch } = useWagerData(wagerAddress)
+  const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
   
   const [opponentUsername, setOpponentUsername] = useState("")
   const [gameId, setGameId] = useState("")
@@ -48,20 +49,15 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     wagerAddress
   )
   
-  // Refetch wager data after successful transactions
+  // Show success toasts (cache invalidation is now handled in hooks)
   useEffect(() => {
     if (isDepositSuccess) {
       toast({ 
         title: "✅ Deposit successful!", 
         description: "Your stake has been deposited. Waiting for opponent..." 
       })
-      // Wait a bit for blockchain to update, then refetch
-      const timer = setTimeout(() => {
-        refetch()
-      }, 2000)
-      return () => clearTimeout(timer)
     }
-  }, [isDepositSuccess, refetch])
+  }, [isDepositSuccess])
 
   useEffect(() => {
     if (isAcceptSuccess) {
@@ -69,13 +65,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         title: "✅ Wager accepted!", 
         description: "You've successfully joined the wager. The game is now funded!" 
       })
-      // Wait a bit for blockchain to update, then refetch
-      const timer = setTimeout(() => {
-        refetch()
-      }, 2000)
-      return () => clearTimeout(timer)
     }
-  }, [isAcceptSuccess, refetch])
+  }, [isAcceptSuccess])
 
   useEffect(() => {
     if (isApproveSuccess) {
@@ -83,13 +74,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         title: "✅ Approval successful!", 
         description: "Now you can proceed with the deposit." 
       })
-      // Refetch allowance
-      const timer = setTimeout(() => {
-        refetch()
-      }, 1000)
-      return () => clearTimeout(timer)
     }
-  }, [isApproveSuccess, refetch])
+  }, [isApproveSuccess])
 
   useEffect(() => {
     if (isLinkSuccess) {
@@ -97,12 +83,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         title: "✅ Game linked!", 
         description: "Game has been linked to the wager. Waiting for game completion..." 
       })
-      const timer = setTimeout(() => {
-        refetch()
-      }, 2000)
-      return () => clearTimeout(timer)
     }
-  }, [isLinkSuccess, refetch])
+  }, [isLinkSuccess])
 
   useEffect(() => {
     if (isSettleSuccess) {
@@ -110,12 +92,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         title: "✅ Wager settled!", 
         description: "Funds have been distributed. Check your wallet!" 
       })
-      const timer = setTimeout(() => {
-        refetch()
-      }, 2000)
-      return () => clearTimeout(timer)
     }
-  }, [isSettleSuccess, refetch])
+  }, [isSettleSuccess])
 
   if (isLoading) {
     return (
@@ -254,7 +232,10 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Wager Details</CardTitle>
-            <Badge className={statusDisplay.color}>{statusDisplay.label}</Badge>
+            <div className="flex items-center gap-2">
+              <RefreshButton scope="current" wagerAddress={wagerAddress} />
+              <Badge className={statusDisplay.color}>{statusDisplay.label}</Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
