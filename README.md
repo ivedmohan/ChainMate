@@ -165,16 +165,26 @@ npx hardhat test --profile
 
 ## 🚢 Deployment
 
-### Deploy to Testnet
+### Latest Deployments ✅
+
+**Base Sepolia Testnet**
+- WagerFactory: `0x8f3d2d8f8e9e9220df6558d6a866e902b437dd72`
+- ReclaimVerifier: `0xe9fa676e9e3d17f686ec00d83296d2b3a5b59481`
+- [View on BaseScan](https://sepolia.basescan.org/address/0x8f3d2d8f8e9e9220df6558d6a866e902b437dd72)
+
+**Arbitrum Sepolia Testnet**
+- WagerFactory: `0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9`
+- ReclaimVerifier: `0xa8f1e4e4d04bce611f89308e27623bd15741cfe8`
+- [View on Arbiscan](https://sepolia.arbiscan.io/address/0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9)
+
+### Deploy to New Networks
 
 ```bash
-npx hardhat ignition deploy ignition/modules/WagerFactory.ts --network baseSepolia
-```
+# Base Sepolia
+npx hardhat run scripts/deploy-factory-only.ts --network baseSepolia
 
-### Verify Contracts
-
-```bash
-npx hardhat verify --network baseSepolia <contract-address>
+# Arbitrum Sepolia
+npx hardhat run scripts/deploy-factory-only.ts --network arbitrumSepolia
 ```
 
 ## 📚 Documentation
