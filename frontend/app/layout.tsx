@@ -6,12 +6,13 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { Navbar } from "@/components/navbar"
+import { Web3Provider } from "@/components/web3-provider"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "ChainMate - P2P Chess Wagering",
+  description: "Wager on chess games with zero-knowledge proofs",
+  generator: "ChainMate",
 }
 
 export default function RootLayout({
@@ -22,13 +23,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Suspense fallback={<div>Loading...</div>}>
-            <Navbar />
-            <main className="min-h-[calc(100dvh-64px)]">{children}</main>
-            <Toaster />
-          </Suspense>
-        </ThemeProvider>
+        <Web3Provider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <Suspense fallback={<div>Loading...</div>}>
+              <Navbar />
+              <main className="min-h-[calc(100dvh-64px)]">{children}</main>
+              <Toaster />
+            </Suspense>
+          </ThemeProvider>
+        </Web3Provider>
       </body>
     </html>
   )
