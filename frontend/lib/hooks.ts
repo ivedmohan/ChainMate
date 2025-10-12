@@ -41,7 +41,9 @@ export function useUserWagers(userAddress?: Address) {
     functionName: 'getUserWagers',
     args: userAddress ? [userAddress] : undefined,
     query: {
-      enabled: !!userAddress,
+      enabled: !!userAddress && !!wagerFactory,
+      retry: 3,
+      retryDelay: 1000,
     },
   })
 }
@@ -54,6 +56,8 @@ export function useWagerData(wagerAddress?: Address) {
     functionName: 'getWagerData',
     query: {
       enabled: !!wagerAddress,
+      retry: 3,
+      retryDelay: 1000,
     },
   })
 }
