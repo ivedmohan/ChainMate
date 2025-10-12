@@ -60,13 +60,28 @@ RATE_LIMIT_MAX_REQUESTS=100
 # Development mode (with hot reload)
 npm run dev
 
+# Development with logging
+npm run dev:log
+
 # Production build
 npm run build
 npm start
 
+# Production with logging
+npm run start:log
+
 # Run tests
 npm test
+
+# Clean build and logs
+npm run clean
 ```
+
+## 📋 Logs
+
+Server logs are stored in the `logs/` directory:
+- `logs/server.log` - Main server log file
+- Use `npm run dev:log` or `npm run start:log` to enable file logging
 
 ## 📡 API Endpoints
 

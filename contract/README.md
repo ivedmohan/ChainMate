@@ -16,7 +16,7 @@
 - **ReclaimVerifier**: `0xa8f1e4e4d04bce611f89308e27623bd15741cfe8`
 - **WagerFactory**: `0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9`
 - **Treasury**: `0x84c2f35807fC555C4A06cC12Dc0aAf9d948FeE1d`
-- **Supported Tokens**: 
+- **Supported Tokens**:
   - USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
   - PYUSD: `0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1`
 - **Explorer**: [View on Arbiscan](https://sepolia.arbiscan.io/address/0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9)
