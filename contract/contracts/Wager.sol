@@ -6,6 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
+ * @title IWagerFactory
+ * @dev Interface for WagerFactory fee tracking
+ */
+interface IWagerFactory {
+    function recordFees(uint256 _amount) external;
+}
+
+/**
  * @title Wager
  * @dev Individual wager contract for peer-to-peer chess betting
  * @notice This contract manages a single wager between two players
@@ -30,11 +38,11 @@ contract Wager is ReentrancyGuard {
     struct WagerData {
         address creator;
         address opponent;
-        address token;                  // USDC or PYUSD address
-        uint256 amount;                 // Amount per player
+        address token;
+        uint256 amount;
         string creatorChessUsername;
         string opponentChessUsername;
-        string gameId;                  // Chess.com game ID
+        string gameId;
         WagerState state;
         address winner;
         uint256 createdAt;
@@ -43,20 +51,21 @@ contract Wager is ReentrancyGuard {
         uint256 settledAt;
         bool creatorDeposited;
         bool opponentDeposited;
-        uint256 platformFee;            // Calculated fee amount
+        uint256 platformFee;
     }
 
     // ============ State Variables ============
 
     WagerData public wagerData;
-    address public immutable treasury;  // Platform treasury for fees
-    address public immutable reclaimVerifier;  // ReclaimVerifier contract address
-    uint256 public constant PLATFORM_FEE_BPS = 200; // 2% in basis points
-    uint256 public constant DRAW_FEE_BPS = 100;     // 1% each player for draws
-    uint256 public constant EXPIRY_DURATION = 24 hours; // Time to accept wager
-    uint256 public constant SETTLEMENT_TIMEOUT = 7 days; // Time to complete game
+    address public immutable treasury;
+    address public immutable reclaimVerifier;
+    address public immutable factory;
     
-    // Mutual cancellation votes
+    uint256 public constant PLATFORM_FEE_BPS = 200;
+    uint256 public constant DRAW_FEE_BPS = 100;
+    uint256 public constant EXPIRY_DURATION = 24 hours;
+    uint256 public constant SETTLEMENT_TIMEOUT = 7 days;
+
     mapping(address => bool) public cancelVotes;
 
     // ============ Events ============
@@ -69,15 +78,9 @@ contract Wager is ReentrancyGuard {
         string creatorChessUsername
     );
 
-    event WagerFunded(
-        address indexed player,
-        uint256 totalPot
-    );
+    event WagerFunded(address indexed player, uint256 totalPot);
 
-    event GameLinked(
-        string indexed gameId,
-        address indexed linkedBy
-    );
+    event GameLinked(string indexed gameId, address indexed linkedBy);
 
     event OutcomeVerified(
         string indexed gameId,
@@ -91,30 +94,20 @@ contract Wager is ReentrancyGuard {
         uint256 platformFee
     );
 
-    event WagerCancelled(
-        address indexed cancelledBy,
-        string reason
-    );
+    event WagerCancelled(address indexed cancelledBy, string reason);
 
-    event DisputeInitiated(
-        address indexed initiatedBy,
-        string reason
-    );
+    event DisputeInitiated(address indexed initiatedBy, string reason);
 
     // ============ Errors ============
 
     error WagerAlreadyFunded();
-    error WagerNotFunded();
     error WagerExpired();
     error WagerNotExpired();
-    error WagerAlreadySettled();
     error UnauthorizedCaller();
     error InvalidProof();
-    error InsufficientBalance();
     error InvalidAmount();
     error InvalidState();
     error GameAlreadyLinked();
-    error UsernamesMismatch();
     error TransferFailed();
     error InvalidToken();
     error SamePlayer();
@@ -144,16 +137,6 @@ contract Wager is ReentrancyGuard {
 
     // ============ Constructor ============
 
-    /**
-     * @dev Initialize a new wager
-     * @param _creator Address of the creator
-     * @param _opponent Address of the opponent
-     * @param _token Address of the token (USDC or PYUSD)
-     * @param _amount Amount each player must deposit
-     * @param _creatorChessUsername Creator's Chess.com username
-     * @param _treasury Platform treasury address
-     * @param _reclaimVerifier ReclaimVerifier contract address
-     */
     constructor(
         address _creator,
         address _opponent,
@@ -161,9 +144,11 @@ contract Wager is ReentrancyGuard {
         uint256 _amount,
         string memory _creatorChessUsername,
         address _treasury,
-        address _reclaimVerifier
+        address _reclaimVerifier,
+        address _factory
     ) {
-        if (_creator == address(0) || _opponent == address(0) || _token == address(0) || _treasury == address(0) || _reclaimVerifier == address(0)) {
+        if (_creator == address(0) || _opponent == address(0) || _token == address(0) || 
+            _treasury == address(0) || _reclaimVerifier == address(0) || _factory == address(0)) {
             revert InvalidToken();
         }
         if (_amount == 0) {
@@ -178,6 +163,7 @@ contract Wager is ReentrancyGuard {
 
         treasury = _treasury;
         reclaimVerifier = _reclaimVerifier;
+        factory = _factory;
 
         wagerData = WagerData({
             creator: _creator,
@@ -198,21 +184,11 @@ contract Wager is ReentrancyGuard {
             platformFee: 0
         });
 
-        emit WagerCreated(
-            _creator,  // Fixed: use parameter, not msg.sender (which would be Factory)
-            _opponent,
-            _token,
-            _amount,
-            _creatorChessUsername
-        );
+        emit WagerCreated(_creator, _opponent, _token, _amount, _creatorChessUsername);
     }
 
     // ============ External Functions ============
 
-    /**
-     * @dev Creator deposits their stake
-     * @notice Creator must approve tokens before calling this
-     */
     function creatorDeposit() external nonReentrant {
         if (msg.sender != wagerData.creator) {
             revert UnauthorizedCaller();
@@ -234,10 +210,6 @@ contract Wager is ReentrancyGuard {
         _checkIfFullyFunded();
     }
 
-    /**
-     * @dev Opponent accepts wager and deposits their stake
-     * @param _opponentChessUsername Opponent's Chess.com username
-     */
     function acceptWager(string calldata _opponentChessUsername) 
         external 
         nonReentrant 
@@ -266,10 +238,6 @@ contract Wager is ReentrancyGuard {
         _checkIfFullyFunded();
     }
 
-    /**
-     * @dev Link a Chess.com game to this wager
-     * @param _gameId Chess.com game ID
-     */
     function linkGame(string calldata _gameId) 
         external 
         onlyParticipants 
@@ -288,39 +256,10 @@ contract Wager is ReentrancyGuard {
         emit GameLinked(_gameId, msg.sender);
     }
 
-    /**
-     * @dev Submit proof of game outcome (placeholder for Reclaim integration)
-     * @param _winner Address of the winner (address(0) for draw)
-     * @param _result Game result string ("win", "draw", "loss")
-     */
-    function submitProof(address _winner, string calldata _result) 
-        external 
-        onlyParticipants 
-        inState(WagerState.GameLinked)
-    {
-        // TODO: Integrate with Reclaim Protocol for actual proof verification
-        // For now, this is a placeholder that accepts any participant's submission
-        
-        if (_winner != address(0) && _winner != wagerData.creator && _winner != wagerData.opponent) {
-            revert InvalidProof();
-        }
-
-        wagerData.winner = _winner;
-        wagerData.state = WagerState.Completed;
-
-        emit OutcomeVerified(wagerData.gameId, _winner, _result);
-    }
-
-    /**
-     * @dev Resolve wager with verified outcome (called by ReclaimVerifier)
-     * @param _winner Address of the winner (address(0) for draw)
-     * @param _result Game result string
-     */
     function resolveWager(address _winner, string calldata _result) 
         external 
         inState(WagerState.GameLinked)
     {
-        // Access control: Only ReclaimVerifier can call this
         if (msg.sender != reclaimVerifier) {
             revert UnauthorizedCaller();
         }
@@ -335,9 +274,6 @@ contract Wager is ReentrancyGuard {
         emit OutcomeVerified(wagerData.gameId, _winner, _result);
     }
 
-    /**
-     * @dev Settle the wager after outcome verification
-     */
     function settle() external nonReentrant inState(WagerState.Completed) {
         if (wagerData.winner == address(0)) {
             _settleDraw();
@@ -349,49 +285,41 @@ contract Wager is ReentrancyGuard {
         wagerData.settledAt = block.timestamp;
     }
 
-    /**
-     * @dev Handle draw settlement
-     */
     function _settleDraw() internal {
         uint256 fee = (wagerData.amount * DRAW_FEE_BPS) / 10000;
         uint256 payout = wagerData.amount - fee;
         
-        // Transfer refunds
         IERC20(wagerData.token).safeTransfer(wagerData.creator, payout);
         IERC20(wagerData.token).safeTransfer(wagerData.opponent, payout);
         
-        // Transfer fees to treasury
         if (fee > 0) {
-            IERC20(wagerData.token).safeTransfer(treasury, fee * 2);
+            uint256 totalFee = fee * 2;
+            IERC20(wagerData.token).safeTransfer(treasury, totalFee);
+            
+            try IWagerFactory(factory).recordFees(totalFee) {} catch {}
+            wagerData.platformFee = totalFee;
         }
         
-        wagerData.platformFee = fee * 2;
         emit WagerSettled(address(0), payout, fee * 2);
     }
 
-    /**
-     * @dev Handle win settlement
-     */
     function _settleWin() internal {
         uint256 totalPot = wagerData.amount * 2;
         uint256 fee = (totalPot * PLATFORM_FEE_BPS) / 10000;
         uint256 payout = totalPot - fee;
         
-        // Transfer winnings to winner
         IERC20(wagerData.token).safeTransfer(wagerData.winner, payout);
         
-        // Transfer fee to treasury
         if (fee > 0) {
             IERC20(wagerData.token).safeTransfer(treasury, fee);
+            
+            try IWagerFactory(factory).recordFees(fee) {} catch {}
+            wagerData.platformFee = fee;
         }
         
-        wagerData.platformFee = fee;
         emit WagerSettled(wagerData.winner, payout, fee);
     }
 
-    /**
-     * @dev Cancel wager if opponent doesn't accept in time
-     */
     function cancel() external nonReentrant {
         if (msg.sender != wagerData.creator) {
             revert UnauthorizedCaller();
@@ -405,7 +333,6 @@ contract Wager is ReentrancyGuard {
 
         wagerData.state = WagerState.Cancelled;
 
-        // Refund creator if they deposited
         if (wagerData.creatorDeposited) {
             IERC20(wagerData.token).safeTransfer(wagerData.creator, wagerData.amount);
         }
@@ -413,9 +340,6 @@ contract Wager is ReentrancyGuard {
         emit WagerCancelled(msg.sender, "Expired or cancelled by creator");
     }
 
-    /**
-     * @dev Claim timeout refund if game not completed within 7 days
-     */
     function claimTimeout() external nonReentrant onlyParticipants {
         if (wagerData.state != WagerState.GameLinked) {
             revert InvalidState();
@@ -426,16 +350,12 @@ contract Wager is ReentrancyGuard {
 
         wagerData.state = WagerState.Cancelled;
         
-        // Refund both players
         IERC20(wagerData.token).safeTransfer(wagerData.creator, wagerData.amount);
         IERC20(wagerData.token).safeTransfer(wagerData.opponent, wagerData.amount);
 
         emit WagerCancelled(msg.sender, "7-day timeout - game incomplete");
     }
 
-    /**
-     * @dev Vote to cancel wager mutually (both players must agree)
-     */
     function voteToCancelMutual() external nonReentrant onlyParticipants {
         if (wagerData.state != WagerState.Funded && wagerData.state != WagerState.GameLinked) {
             revert InvalidState();
@@ -443,11 +363,9 @@ contract Wager is ReentrancyGuard {
 
         cancelVotes[msg.sender] = true;
 
-        // If both players voted, cancel and refund
         if (cancelVotes[wagerData.creator] && cancelVotes[wagerData.opponent]) {
             wagerData.state = WagerState.Cancelled;
             
-            // Refund both players
             IERC20(wagerData.token).safeTransfer(wagerData.creator, wagerData.amount);
             IERC20(wagerData.token).safeTransfer(wagerData.opponent, wagerData.amount);
 
@@ -455,10 +373,6 @@ contract Wager is ReentrancyGuard {
         }
     }
 
-    /**
-     * @dev Initiate dispute resolution
-     * @param _reason Reason for dispute
-     */
     function dispute(string calldata _reason) external onlyParticipants {
         if (wagerData.state == WagerState.Settled || wagerData.state == WagerState.Cancelled) {
             revert InvalidState();
@@ -470,32 +384,20 @@ contract Wager is ReentrancyGuard {
 
     // ============ View Functions ============
 
-    /**
-     * @dev Get current wager data
-     */
     function getWagerData() external view returns (WagerData memory) {
         return wagerData;
     }
 
-    /**
-     * @dev Get contract balance for the wager token
-     */
     function getBalance() external view returns (uint256) {
         return IERC20(wagerData.token).balanceOf(address(this));
     }
 
-    /**
-     * @dev Check if wager is expired
-     */
     function isExpired() external view returns (bool) {
         return block.timestamp > wagerData.expiresAt && wagerData.state == WagerState.Created;
     }
 
     // ============ Internal Functions ============
 
-    /**
-     * @dev Check if both players have deposited and update state
-     */
     function _checkIfFullyFunded() internal {
         if (wagerData.creatorDeposited && wagerData.opponentDeposited) {
             wagerData.state = WagerState.Funded;
