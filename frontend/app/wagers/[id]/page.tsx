@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation"
 import { useAccount } from "wagmi"
-import { useWagerData, useSupportedTokens, useTokenBalance, useTokenAllowance, useApproveToken, useDepositToWager, useAcceptWager, formatTokenAmount, useContractAddresses } from "@/lib/hooks"
+import { useWagerData, useSupportedTokens, useTokenBalance, useTokenAllowance, useApproveToken, useDepositToWager, useAcceptWager, useLinkGame, useSettleWager, formatTokenAmount, useContractAddresses } from "@/lib/hooks"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "@/components/ui/use-toast"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import type { Address } from "viem"
 
 const STATUS_COLORS = {
@@ -24,14 +24,98 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const { address: userAddress } = useAccount()
   const supportedTokens = useSupportedTokens()
   const { wagerFactory } = useContractAddresses()
-  const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
+  const { data: wagerData, isLoading, error, refetch } = useWagerData(wagerAddress)
   
   const [opponentUsername, setOpponentUsername] = useState("")
+  const [gameId, setGameId] = useState("")
   
-  // Contract interaction hooks
+  // Contract interaction hooks - MUST be at the top before any returns
   const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess } = useApproveToken()
   const { deposit, isPending: isDepositing, isConfirming: isConfirmingDeposit, isSuccess: isDepositSuccess } = useDepositToWager()
   const { acceptWager, isPending: isAccepting, isConfirming: isConfirmingAccept, isSuccess: isAcceptSuccess } = useAcceptWager()
+  const { linkGame, isPending: isLinking, isConfirming: isConfirmingLink, isSuccess: isLinkSuccess } = useLinkGame()
+  const { settle, isPending: isSettling, isConfirming: isConfirmingSettle, isSuccess: isSettleSuccess } = useSettleWager()
+  
+  // Token hooks - MUST be called unconditionally before any returns
+  // Pass undefined when wagerData is not loaded yet - the hooks will handle it
+  const { data: tokenBalance } = useTokenBalance(
+    wagerData?.token as Address | undefined, 
+    userAddress
+  )
+  const { data: tokenAllowance } = useTokenAllowance(
+    wagerData?.token as Address | undefined, 
+    userAddress, 
+    wagerAddress
+  )
+  
+  // Refetch wager data after successful transactions
+  useEffect(() => {
+    if (isDepositSuccess) {
+      toast({ 
+        title: "✅ Deposit successful!", 
+        description: "Your stake has been deposited. Waiting for opponent..." 
+      })
+      // Wait a bit for blockchain to update, then refetch
+      const timer = setTimeout(() => {
+        refetch()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isDepositSuccess, refetch])
+
+  useEffect(() => {
+    if (isAcceptSuccess) {
+      toast({ 
+        title: "✅ Wager accepted!", 
+        description: "You've successfully joined the wager. The game is now funded!" 
+      })
+      // Wait a bit for blockchain to update, then refetch
+      const timer = setTimeout(() => {
+        refetch()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isAcceptSuccess, refetch])
+
+  useEffect(() => {
+    if (isApproveSuccess) {
+      toast({ 
+        title: "✅ Approval successful!", 
+        description: "Now you can proceed with the deposit." 
+      })
+      // Refetch allowance
+      const timer = setTimeout(() => {
+        refetch()
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isApproveSuccess, refetch])
+
+  useEffect(() => {
+    if (isLinkSuccess) {
+      toast({ 
+        title: "✅ Game linked!", 
+        description: "Game has been linked to the wager. Waiting for game completion..." 
+      })
+      const timer = setTimeout(() => {
+        refetch()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isLinkSuccess, refetch])
+
+  useEffect(() => {
+    if (isSettleSuccess) {
+      toast({ 
+        title: "✅ Wager settled!", 
+        description: "Funds have been distributed. Check your wallet!" 
+      })
+      const timer = setTimeout(() => {
+        refetch()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isSettleSuccess, refetch])
 
   if (isLoading) {
     return (
@@ -67,7 +151,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     amount,
     creatorChessUsername,
     opponentChessUsername,
-    gameId,
+    gameId: linkedGameId,
     state,
     winner,
     createdAt,
@@ -82,15 +166,11 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   // Check user role
   const isCreator = userAddress?.toLowerCase() === creator.toLowerCase()
   const isOpponent = userAddress?.toLowerCase() === opponent.toLowerCase()
+  const isParticipant = isCreator || isOpponent
   const canAccept = isOpponent && state === 0 // Opponent can accept when in Created state
   const canDeposit = isCreator && state === 0 // Creator can deposit in Created state
-  
-  // Token allowance and balance
-  const { data: tokenBalance } = useTokenBalance(token as Address, userAddress)
-  
-  // For creator deposit approval, check allowance against wager contract
-  // For opponent accept, also check allowance against wager contract (acceptWager deposits directly)
-  const { data: tokenAllowance } = useTokenAllowance(token as Address, userAddress, wagerAddress)
+  const canLinkGame = isParticipant && state === 1 && !linkedGameId // Can link when funded
+  const canSettle = state === 3 // Can settle when completed
   
   const needsApproval = useMemo(() => {
     if (!tokenAllowance || !tokenInfo) return true // Default to needs approval if we can't check
@@ -143,6 +223,28 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
       toast({ title: "Deposit submitted!", description: "Transaction is being processed..." })
     } catch (error: any) {
       toast({ title: "Deposit failed", description: error?.message, variant: "destructive" })
+    }
+  }
+
+  const handleLinkGame = async () => {
+    if (!gameId.trim()) {
+      toast({ title: "Game ID required", description: "Please enter the Chess.com game ID", variant: "destructive" })
+      return
+    }
+    try {
+      await linkGame(wagerAddress, gameId)
+      toast({ title: "Linking game...", description: "Transaction is being processed..." })
+    } catch (error: any) {
+      toast({ title: "Link failed", description: error?.message, variant: "destructive" })
+    }
+  }
+
+  const handleSettle = async () => {
+    try {
+      await settle(wagerAddress)
+      toast({ title: "Settling wager...", description: "Transaction is being processed..." })
+    } catch (error: any) {
+      toast({ title: "Settlement failed", description: error?.message, variant: "destructive" })
     }
   }
 
@@ -207,18 +309,35 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             </div>
           </div>
 
-          {gameId && (
+          {linkedGameId && (
             <div>
               <Label className="text-sm font-medium">Chess.com Game ID</Label>
-              <p className="text-sm font-mono">{gameId}</p>
+              <p className="text-sm font-mono">{linkedGameId}</p>
               <a 
-                href={`https://www.chess.com/game/live/${gameId}`}
+                href={`https://www.chess.com/game/live/${linkedGameId}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-blue-500 hover:underline"
               >
                 View game on Chess.com →
               </a>
+            </div>
+          )}
+          
+          {winner && winner !== "0x0000000000000000000000000000000000000000" && (
+            <div>
+              <Label className="text-sm font-medium">Winner 🏆</Label>
+              <p className="text-sm font-mono truncate" title={winner}>{winner}</p>
+              {winner.toLowerCase() === userAddress?.toLowerCase() && (
+                <Badge className="bg-green-500 mt-1">You won! 🎉</Badge>
+              )}
+            </div>
+          )}
+          
+          {winner === "0x0000000000000000000000000000000000000000" && state === 3 && (
+            <div>
+              <Label className="text-sm font-medium">Result</Label>
+              <Badge variant="outline">Draw 🤝</Badge>
             </div>
           )}
         </CardContent>
@@ -329,6 +448,153 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             <div className="mt-4 p-3 bg-muted rounded-lg">
               <p className="text-xs font-mono break-all">{window.location.href}</p>
             </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Link Game Section - State: Funded (1) */}
+      {canLinkGame && (
+        <Card className="border-yellow-500">
+          <CardHeader>
+            <CardTitle>♟️ Link Your Chess.com Game</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Both players have deposited! Now play your game on Chess.com and link it here.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg space-y-2">
+              <p className="text-sm font-medium">📋 How to link your game:</p>
+              <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground">
+                <li>Go to <a href="https://www.chess.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Chess.com</a></li>
+                <li>Play a game between {creatorChessUsername} and {opponentChessUsername}</li>
+                <li>Copy the game ID from the URL (e.g., 123456789)</li>
+                <li>Paste it below and link</li>
+                <li>After the game finishes, Reclaim will verify the result</li>
+              </ol>
+            </div>
+            
+            <div>
+              <Label htmlFor="game-id">Chess.com Game ID</Label>
+              <Input
+                id="game-id"
+                placeholder="e.g. 123456789"
+                value={gameId}
+                onChange={(e) => setGameId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Find this in your Chess.com game URL: chess.com/game/live/<strong>[ID]</strong>
+              </p>
+            </div>
+            
+            <Button 
+              onClick={handleLinkGame}
+              disabled={isLinking || isConfirmingLink || !gameId.trim()}
+              className="w-full"
+            >
+              {isLinking || isConfirmingLink ? "Linking..." : "🔗 Link Game"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Waiting for Game - State: GameLinked (2) */}
+      {isParticipant && state === 2 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>⏳ Game In Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Game has been linked! Complete your game on Chess.com. After the game finishes, Reclaim Protocol will automatically verify the result.
+            </p>
+            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">ℹ️ What happens next:</p>
+              <ul className="text-xs space-y-1 list-disc list-inside text-muted-foreground">
+                <li>Finish your chess game on Chess.com</li>
+                <li>Reclaim Protocol will verify the outcome</li>
+                <li>Winner (or both players if draw) can settle the wager</li>
+                <li>Funds will be distributed automatically</li>
+              </ul>
+            </div>
+            {linkedGameId && (
+              <a 
+                href={`https://www.chess.com/game/live/${linkedGameId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-center"
+              >
+                <Button variant="outline" className="w-full">
+                  View Game on Chess.com →
+                </Button>
+              </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Settle Wager - State: Completed (3) */}
+      {canSettle && (
+        <Card className="border-green-500">
+          <CardHeader>
+            <CardTitle>🎉 Game Completed - Settle Wager</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              The game result has been verified! Click below to settle and distribute funds.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg">
+              {winner === "0x0000000000000000000000000000000000000000" ? (
+                <>
+                  <p className="text-sm font-medium mb-2">🤝 Draw - Refund Stakes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Each player will receive 99% of their stake back ({(parseFloat(formattedAmount) * 0.99).toFixed(2)} {tokenInfo?.symbol}).
+                    Platform fee: 1% each.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium mb-2">🏆 Winner Takes All</p>
+                  <p className="text-xs text-muted-foreground">
+                    Winner receives: {(parseFloat(formattedAmount) * 2 * 0.98).toFixed(2)} {tokenInfo?.symbol} (98% of pot)
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Platform fee: {(parseFloat(formattedAmount) * 2 * 0.02).toFixed(2)} {tokenInfo?.symbol} (2%)
+                  </p>
+                </>
+              )}
+            </div>
+            
+            <Button 
+              onClick={handleSettle}
+              disabled={isSettling || isConfirmingSettle}
+              className="w-full"
+              size="lg"
+            >
+              {isSettling || isConfirmingSettle ? "Settling..." : "💰 Settle & Claim Funds"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Settled - State: Settled (4) */}
+      {state === 4 && (
+        <Card className="border-gray-500">
+          <CardHeader>
+            <CardTitle>✅ Wager Settled</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              This wager has been settled and funds have been distributed. Thank you for using P2P Chess!
+            </p>
+            {winner && winner !== "0x0000000000000000000000000000000000000000" && (
+              <div className="mt-4 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                <p className="text-sm font-medium">🏆 Winner</p>
+                <p className="text-xs font-mono mt-1">{winner}</p>
+                {winner.toLowerCase() === userAddress?.toLowerCase() && (
+                  <Badge className="bg-green-500 mt-2">Congratulations! 🎉</Badge>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

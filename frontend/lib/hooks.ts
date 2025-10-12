@@ -75,6 +75,7 @@ export function useWagerData(wagerAddress?: Address) {
       enabled: !!wagerAddress,
       retry: 3,
       retryDelay: 1000,
+      refetchInterval: 5000, // Auto-refetch every 5 seconds
     },
   })
 }

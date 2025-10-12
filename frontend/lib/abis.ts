@@ -31,6 +31,24 @@ export const WAGER_FACTORY_ABI = [
   },
   {
     type: 'function',
+    name: 'getTotalWagers',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getStats',
+    inputs: [],
+    outputs: [
+      { name: 'totalWagers', type: 'uint256' },
+      { name: 'volume', type: 'uint256' },
+      { name: 'fees', type: 'uint256' }
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'isSupportedToken',
     inputs: [{ name: '_token', type: 'address' }],
     outputs: [{ name: '', type: 'bool' }],
