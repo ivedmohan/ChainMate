@@ -1,7 +1,7 @@
 "use client"
 
 import { useAccount } from "wagmi"
-import { useUserWagers, useWagerData, useSupportedTokens } from "@/lib/hooks"
+import { useUserWagers, useAllWagers, useWagerData, useSupportedTokens } from "@/lib/hooks"
 import { WagerCard } from "@/components/wager-card"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -173,6 +173,126 @@ function WagerDataCard({ wagerAddress, supportedTokens }: { wagerAddress: Addres
   return <WagerCard wager={formattedWager} />
 }
 
+function AvailableWagersList({ userAddress }: { userAddress: Address }) {
+  const supportedTokens = useSupportedTokens()
+  const { data: allWagerAddresses, isLoading: isLoadingAll, error: allError } = useAllWagers(0, 50)
+
+  if (isLoadingAll) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        {[...Array(2)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-1/2 mb-4" />
+              <Skeleton className="h-8 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (allError) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">Error loading available wagers: {allError.message}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!allWagerAddresses || allWagerAddresses.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">No wagers available to accept at the moment.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Filter out wagers created by current user and only show open wagers
+  const availableWagers = allWagerAddresses.filter((wagerAddress: Address) => {
+    // We'll check if this wager is open and not created by current user in the component
+    return true // Let the individual component handle filtering
+  })
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {availableWagers.map((wagerAddress: Address) => (
+        <AvailableWagerCard 
+          key={wagerAddress} 
+          wagerAddress={wagerAddress} 
+          supportedTokens={supportedTokens}
+          userAddress={userAddress}
+        />
+      ))}
+    </div>
+  )
+}
+
+function AvailableWagerCard({ 
+  wagerAddress, 
+  supportedTokens, 
+  userAddress 
+}: { 
+  wagerAddress: Address
+  supportedTokens: any[]
+  userAddress: Address 
+}) {
+  const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Skeleton className="h-4 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2 mb-4" />
+          <Skeleton className="h-8 w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error || !wagerData) {
+    return null // Don't show error cards in available wagers list
+  }
+
+  const {
+    creator,
+    opponent,
+    state
+  } = wagerData
+
+  // Only show wagers that:
+  // 1. Are in "Created" state (0)
+  // 2. Were NOT created by current user
+  // 3. Don't have an opponent yet (opponent is zero address)
+  const isCreatedByUser = creator.toLowerCase() === userAddress.toLowerCase()
+  const isOpen = state === 0
+  const hasNoOpponent = opponent === "0x0000000000000000000000000000000000000000"
+
+  if (isCreatedByUser || !isOpen || !hasNoOpponent) {
+    return null // Hide this wager
+  }
+
+  const formattedWager = formatWagerData(wagerAddress, wagerData, supportedTokens)
+  
+  if (!formattedWager) {
+    return null
+  }
+
+  // Modify the wager card data to show "Accept" action
+  const availableWager = {
+    ...formattedWager,
+    opponentHandle: "🎯 Available to Accept"
+  }
+
+  return <WagerCard wager={availableWager} />
+}
+
 export default function DashboardPage() {
   const { address: userAddress, isConnected } = useAccount()
 
@@ -195,10 +315,26 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-balance">Your wagers</h1>
-        <p className="text-sm text-muted-foreground mt-1">Track open, active, and settled wagers.</p>
+        <h1 className="text-2xl font-semibold text-balance">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage your wagers and find new opponents.</p>
       </header>
-      <WagersList userAddress={userAddress} />
+      
+      <div className="space-y-8">
+        {/* Your Wagers */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Your Wagers</h2>
+          <WagersList userAddress={userAddress} />
+        </section>
+
+        {/* Available Wagers to Accept */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Available Wagers</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Open wagers from other players that you can accept
+          </p>
+          <AvailableWagersList userAddress={userAddress} />
+        </section>
+      </div>
     </div>
   )
 }

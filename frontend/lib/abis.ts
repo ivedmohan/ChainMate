@@ -21,6 +21,16 @@ export const WAGER_FACTORY_ABI = [
   },
   {
     type: 'function',
+    name: 'getWagers',
+    inputs: [
+      { name: '_start', type: 'uint256' },
+      { name: '_limit', type: 'uint256' }
+    ],
+    outputs: [{ name: '', type: 'address[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'isSupportedToken',
     inputs: [{ name: '_token', type: 'address' }],
     outputs: [{ name: '', type: 'bool' }],
@@ -70,6 +80,34 @@ export const WAGER_ABI = [
   },
   {
     type: 'function',
+    name: 'cancel',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'claimTimeout',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'voteToCancelMutual',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'dispute',
+    inputs: [{ name: '_reason', type: 'string' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
     name: 'getWagerData',
     inputs: [],
     outputs: [
@@ -88,10 +126,89 @@ export const WAGER_ABI = [
           { name: 'createdAt', type: 'uint256' },
           { name: 'fundedAt', type: 'uint256' },
           { name: 'expiresAt', type: 'uint256' },
+          { name: 'settledAt', type: 'uint256' },
+          { name: 'creatorDeposited', type: 'bool' },
+          { name: 'opponentDeposited', type: 'bool' },
+          { name: 'platformFee', type: 'uint256' },
         ],
       },
     ],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getBalance',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isExpired',
+    inputs: [],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'WagerCreated',
+    inputs: [
+      { name: 'creator', type: 'address', indexed: true },
+      { name: 'opponent', type: 'address', indexed: true },
+      { name: 'token', type: 'address', indexed: true },
+      { name: 'amount', type: 'uint256', indexed: false },
+      { name: 'creatorChessUsername', type: 'string', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'WagerFunded',
+    inputs: [
+      { name: 'player', type: 'address', indexed: true },
+      { name: 'totalPot', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'GameLinked',
+    inputs: [
+      { name: 'gameId', type: 'string', indexed: true },
+      { name: 'linkedBy', type: 'address', indexed: true },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OutcomeVerified',
+    inputs: [
+      { name: 'gameId', type: 'string', indexed: true },
+      { name: 'winner', type: 'address', indexed: true },
+      { name: 'result', type: 'string', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'WagerSettled',
+    inputs: [
+      { name: 'winner', type: 'address', indexed: true },
+      { name: 'winnings', type: 'uint256', indexed: false },
+      { name: 'platformFee', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'WagerCancelled',
+    inputs: [
+      { name: 'cancelledBy', type: 'address', indexed: true },
+      { name: 'reason', type: 'string', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'DisputeInitiated',
+    inputs: [
+      { name: 'initiatedBy', type: 'address', indexed: true },
+      { name: 'reason', type: 'string', indexed: false },
+    ],
   },
 ] as const
 

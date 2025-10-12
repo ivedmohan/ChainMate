@@ -48,6 +48,23 @@ export function useUserWagers(userAddress?: Address) {
   })
 }
 
+// Hook to get all wagers (paginated)
+export function useAllWagers(start: number = 0, limit: number = 50) {
+  const { wagerFactory } = useContractAddresses()
+  
+  return useReadContract({
+    address: wagerFactory,
+    abi: WAGER_FACTORY_ABI,
+    functionName: 'getWagers',
+    args: [BigInt(start), BigInt(limit)],
+    query: {
+      enabled: !!wagerFactory,
+      retry: 3,
+      retryDelay: 1000,
+    },
+  })
+}
+
 // Hook to get wager data
 export function useWagerData(wagerAddress?: Address) {
   return useReadContract({
@@ -251,6 +268,111 @@ export function useSettleWager() {
 
   return {
     settle,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  }
+}
+
+// Hook for cancelling wager
+export function useCancelWager() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
+
+  const cancel = async (wagerAddress: Address) => {
+    writeContract({
+      address: wagerAddress,
+      abi: WAGER_ABI,
+      functionName: 'cancel',
+    })
+  }
+
+  return {
+    cancel,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  }
+}
+
+// Hook for mutual cancellation
+export function useVoteToCancelMutual() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
+
+  const voteToCancelMutual = async (wagerAddress: Address) => {
+    writeContract({
+      address: wagerAddress,
+      abi: WAGER_ABI,
+      functionName: 'voteToCancelMutual',
+    })
+  }
+
+  return {
+    voteToCancelMutual,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  }
+}
+
+// Hook for claiming timeout
+export function useClaimTimeout() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
+
+  const claimTimeout = async (wagerAddress: Address) => {
+    writeContract({
+      address: wagerAddress,
+      abi: WAGER_ABI,
+      functionName: 'claimTimeout',
+    })
+  }
+
+  return {
+    claimTimeout,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  }
+}
+
+// Hook for disputing wager
+export function useDisputeWager() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract()
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
+
+  const dispute = async (wagerAddress: Address, reason: string) => {
+    writeContract({
+      address: wagerAddress,
+      abi: WAGER_ABI,
+      functionName: 'dispute',
+      args: [reason],
+    })
+  }
+
+  return {
+    dispute,
     hash,
     isPending,
     isConfirming,
