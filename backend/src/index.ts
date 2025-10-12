@@ -6,6 +6,7 @@ import { reclaimRoutes } from './routes/reclaim';
 import { chessRoutes } from './routes/chess';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { getAutoVerificationService } from './services/autoVerificationService';
 
 // Load environment variables
 dotenv.config();
@@ -54,6 +55,20 @@ app.listen(PORT, () => {
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 Reclaim API: http://localhost:${PORT}/api/reclaim`);
   console.log(`♟️  Chess API: http://localhost:${PORT}/api/chess`);
+  
+  // Start Auto-Verification Service if configured
+  if (process.env.ENABLE_AUTO_VERIFICATION === 'true') {
+    try {
+      const verificationService = getAutoVerificationService();
+      verificationService.start();
+      console.log('✅ Auto-Verification Service started');
+    } catch (error) {
+      console.error('❌ Failed to start Auto-Verification Service:', error);
+      console.error('   Make sure VERIFIER_PRIVATE_KEY and contract addresses are set');
+    }
+  } else {
+    console.log('ℹ️  Auto-Verification Service disabled (set ENABLE_AUTO_VERIFICATION=true to enable)');
+  }
 });
 
 export default app;
