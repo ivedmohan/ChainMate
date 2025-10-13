@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/use-toast"
 import { RefreshButton } from "@/components/refresh-button"
 import { useState, useMemo, useEffect } from "react"
 import type { Address } from "viem"
+import { ClientOnly } from "@/components/client-only"
 
 const STATUS_COLORS = {
   open: "bg-blue-500",
@@ -30,15 +31,14 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const [opponentUsername, setOpponentUsername] = useState("")
   const [gameId, setGameId] = useState("")
   
-  // Contract interaction hooks - MUST be at the top before any returns
+  // ALL HOOKS MUST BE CALLED UNCONDITIONALLY - BEFORE ANY RETURNS
   const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess } = useApproveToken()
   const { deposit, isPending: isDepositing, isConfirming: isConfirmingDeposit, isSuccess: isDepositSuccess } = useDepositToWager()
   const { acceptWager, isPending: isAccepting, isConfirming: isConfirmingAccept, isSuccess: isAcceptSuccess } = useAcceptWager()
   const { linkGame, isPending: isLinking, isConfirming: isConfirmingLink, isSuccess: isLinkSuccess } = useLinkGame()
   const { settle, isPending: isSettling, isConfirming: isConfirmingSettle, isSuccess: isSettleSuccess } = useSettleWager()
   
-  // Token hooks - MUST be called unconditionally before any returns
-  // Pass undefined when wagerData is not loaded yet - the hooks will handle it
+  // Token hooks - Pass undefined when wagerData is not loaded yet
   const { data: tokenBalance } = useTokenBalance(
     wagerData?.token as Address | undefined, 
     userAddress
@@ -48,6 +48,23 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     userAddress, 
     wagerAddress
   )
+  
+  // Memoized calculations - MUST be after all hooks
+  const tokenInfo = useMemo(() => {
+    if (!wagerData || !supportedTokens.length) return null
+    return supportedTokens.find(t => t.address.toLowerCase() === wagerData.token.toLowerCase())
+  }, [wagerData, supportedTokens])
+  
+  const formattedAmount = useMemo(() => {
+    if (!wagerData || !tokenInfo) return "0"
+    return formatTokenAmount(wagerData.amount, tokenInfo.decimals)
+  }, [wagerData, tokenInfo])
+  
+  const needsApproval = useMemo(() => {
+    if (!tokenAllowance || !tokenInfo || !formattedAmount) return true
+    const amountWei = BigInt(Math.floor(parseFloat(formattedAmount) * Math.pow(10, tokenInfo.decimals)))
+    return tokenAllowance < amountWei
+  }, [tokenAllowance, formattedAmount, tokenInfo])
   
   // Show success toasts (cache invalidation is now handled in hooks)
   useEffect(() => {
@@ -95,6 +112,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     }
   }, [isSettleSuccess])
 
+  // Show loading state
   if (isLoading) {
     return (
       <Card>
@@ -110,7 +128,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     )
   }
 
-  if (error || !wagerData) {
+  // Show error state
+  if (error) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -121,7 +140,18 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     )
   }
 
-  // Parse wager data
+  // Parse wager data - only if data exists
+  if (!wagerData) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <p className="text-muted-foreground">Error loading wager data</p>
+          <p className="text-sm text-red-500 mt-2">{error?.message}</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const {
     creator,
     opponent,
@@ -137,9 +167,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     creatorDeposited,
     opponentDeposited
   } = wagerData
-
-  const tokenInfo = supportedTokens.find(t => t.address.toLowerCase() === token.toLowerCase())
-  const formattedAmount = tokenInfo ? formatTokenAmount(amount, tokenInfo.decimals) : "0"
   
   // Check user role
   const isCreator = userAddress?.toLowerCase() === creator.toLowerCase()
@@ -149,12 +176,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const canDeposit = isCreator && state === 0 // Creator can deposit in Created state
   const canLinkGame = isParticipant && state === 1 && !linkedGameId // Can link when funded
   const canSettle = state === 3 // Can settle when completed
-  
-  const needsApproval = useMemo(() => {
-    if (!tokenAllowance || !tokenInfo) return true // Default to needs approval if we can't check
-    const amountWei = BigInt(Math.floor(parseFloat(formattedAmount) * Math.pow(10, tokenInfo.decimals)))
-    return tokenAllowance < amountWei
-  }, [tokenAllowance, formattedAmount, tokenInfo])
 
   const getStatusDisplay = (state: number) => {
     const statusMap = {
@@ -427,7 +448,9 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               You've deposited your stake. Share this page URL with your opponent so they can accept the wager!
             </p>
             <div className="mt-4 p-3 bg-muted rounded-lg">
-              <p className="text-xs font-mono break-all">{window.location.href}</p>
+              <p className="text-xs font-mono break-all">
+                {typeof window !== 'undefined' ? window.location.href : 'Loading...'}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -614,7 +637,15 @@ export default function WagerDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <WagerDetailContent wagerAddress={wagerAddress as Address} />
+      <ClientOnly fallback={
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">Loading wager details...</p>
+          </CardContent>
+        </Card>
+      }>
+        <WagerDetailContent wagerAddress={wagerAddress as Address} />
+      </ClientOnly>
     </div>
   )
 }

@@ -27,13 +27,15 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Web3Provider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem suppressHydrationWarning>
             <Suspense fallback={<div>Loading...</div>}>
               <VisibilityRefreshProvider>
                 <Navbar />
                 <RealTimeIndicator />
                 <DataUpdateNotifier />
-                <main className="min-h-[calc(100dvh-64px)]">{children}</main>
+                <main className="min-h-[calc(100dvh-64px)]" suppressHydrationWarning>
+                  {children}
+                </main>
                 <Toaster />
               </VisibilityRefreshProvider>
             </Suspense>

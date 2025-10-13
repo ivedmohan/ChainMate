@@ -31,7 +31,15 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   }, [])
 
   if (!mounted) {
-    return <>{children}</>
+    return (
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <div suppressHydrationWarning>
+            {children}
+          </div>
+        </QueryClientProvider>
+      </WagmiProvider>
+    )
   }
 
   return (
