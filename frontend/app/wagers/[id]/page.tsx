@@ -1,8 +1,9 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useAccount } from "wagmi"
+import { useAccount, useChainId } from "wagmi"
 import { useWagerData, useSupportedTokens, useTokenBalance, useTokenAllowance, useApproveToken, useDepositToWager, useAcceptWager, useLinkGame, useSettleWager, formatTokenAmount, useContractAddresses } from "@/lib/hooks"
+import { useCrossChainAccept } from "@/hooks/use-cross-chain-accept"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,100 +18,156 @@ import { ClientOnly } from "@/components/client-only"
 
 const STATUS_COLORS = {
   open: "bg-blue-500",
-  active: "bg-green-500", 
+  active: "bg-green-500",
   settled: "bg-gray-500",
   canceled: "bg-red-500",
 } as const
 
 function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const { address: userAddress } = useAccount()
+  const userChainId = useChainId()
   const supportedTokens = useSupportedTokens()
   const { wagerFactory } = useContractAddresses()
   const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
-  
+
   const [opponentUsername, setOpponentUsername] = useState("")
   const [gameId, setGameId] = useState("")
-  
+
   // ALL HOOKS MUST BE CALLED UNCONDITIONALLY - BEFORE ANY RETURNS
   const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess } = useApproveToken()
   const { deposit, isPending: isDepositing, isConfirming: isConfirmingDeposit, isSuccess: isDepositSuccess } = useDepositToWager()
   const { acceptWager, isPending: isAccepting, isConfirming: isConfirmingAccept, isSuccess: isAcceptSuccess } = useAcceptWager()
   const { linkGame, isPending: isLinking, isConfirming: isConfirmingLink, isSuccess: isLinkSuccess } = useLinkGame()
   const { settle, isPending: isSettling, isConfirming: isConfirmingSettle, isSuccess: isSettleSuccess } = useSettleWager()
-  
+
+  // Cross-chain accept hook
+  const {
+    acceptCrossChain,
+    isLoading: isCrossChainLoading,
+    isBridging,
+    isSuccess: isCrossChainSuccess,
+    needsCrossChain,
+    getChainName
+  } = useCrossChainAccept()
+
   // Token hooks - Pass undefined when wagerData is not loaded yet
   const { data: tokenBalance } = useTokenBalance(
-    wagerData?.token as Address | undefined, 
+    wagerData?.token as Address | undefined,
     userAddress
   )
   const { data: tokenAllowance } = useTokenAllowance(
-    wagerData?.token as Address | undefined, 
-    userAddress, 
+    wagerData?.token as Address | undefined,
+    userAddress,
     wagerAddress
   )
-  
+
   // Memoized calculations - MUST be after all hooks
   const tokenInfo = useMemo(() => {
     if (!wagerData || !supportedTokens.length) return null
     return supportedTokens.find(t => t.address.toLowerCase() === wagerData.token.toLowerCase())
   }, [wagerData, supportedTokens])
-  
+
   const formattedAmount = useMemo(() => {
     if (!wagerData || !tokenInfo) return "0"
     return formatTokenAmount(wagerData.amount, tokenInfo.decimals)
   }, [wagerData, tokenInfo])
-  
+
   const needsApproval = useMemo(() => {
     if (!tokenAllowance || !tokenInfo || !formattedAmount) return true
     const amountWei = BigInt(Math.floor(parseFloat(formattedAmount) * Math.pow(10, tokenInfo.decimals)))
     return tokenAllowance < amountWei
   }, [tokenAllowance, formattedAmount, tokenInfo])
-  
+
+  // Check if user has insufficient balance on current chain
+  // If they do, offer cross-chain accept option
+  const hasInsufficientBalance = useMemo(() => {
+    // tokenBalance can be 0 (which is falsy), so check for undefined/null explicitly
+    if (tokenBalance === undefined || tokenBalance === null || !tokenInfo || !formattedAmount) {
+      console.log('🔍 Balance check - missing data:', {
+        tokenBalance: tokenBalance?.toString(),
+        tokenInfo: !!tokenInfo,
+        formattedAmount
+      })
+      return false
+    }
+    const amountWei = BigInt(Math.floor(parseFloat(formattedAmount) * Math.pow(10, tokenInfo.decimals)))
+    const insufficient = tokenBalance < amountWei
+    console.log('🔍 Balance check:', {
+      tokenBalance: tokenBalance.toString(),
+      amountWei: amountWei.toString(),
+      insufficient,
+      formattedAmount,
+      decimals: tokenInfo.decimals
+    })
+    return insufficient
+  }, [tokenBalance, formattedAmount, tokenInfo])
+
+  // Wager is on current chain (since we can read it)
+  // But user might have funds on another chain
+  const wagerChainId = userChainId
+
+  // Show cross-chain option if user has insufficient balance
+  // This means they likely have funds on another chain
+  const isCrossChainAccept = useMemo(() => {
+    console.log('🌉 Cross-chain check:', { hasInsufficientBalance })
+    // Show cross-chain option if user has insufficient balance
+    return hasInsufficientBalance
+  }, [hasInsufficientBalance])
+
   // Show success toasts (cache invalidation is now handled in hooks)
   useEffect(() => {
     if (isDepositSuccess) {
-      toast({ 
-        title: "✅ Deposit successful!", 
-        description: "Your stake has been deposited. Waiting for opponent..." 
+      toast({
+        title: "✅ Deposit successful!",
+        description: "Your stake has been deposited. Waiting for opponent..."
       })
     }
   }, [isDepositSuccess])
 
   useEffect(() => {
     if (isAcceptSuccess) {
-      toast({ 
-        title: "✅ Wager accepted!", 
-        description: "You've successfully joined the wager. The game is now funded!" 
+      toast({
+        title: "✅ Wager accepted!",
+        description: "You've successfully joined the wager. The game is now funded!"
       })
     }
   }, [isAcceptSuccess])
 
   useEffect(() => {
     if (isApproveSuccess) {
-      toast({ 
-        title: "✅ Approval successful!", 
-        description: "Now you can proceed with the deposit." 
+      toast({
+        title: "✅ Approval successful!",
+        description: "Now you can proceed with the deposit."
       })
     }
   }, [isApproveSuccess])
 
   useEffect(() => {
     if (isLinkSuccess) {
-      toast({ 
-        title: "✅ Game linked!", 
-        description: "Game has been linked to the wager. Waiting for game completion..." 
+      toast({
+        title: "✅ Game linked!",
+        description: "Game has been linked to the wager. Waiting for game completion..."
       })
     }
   }, [isLinkSuccess])
 
   useEffect(() => {
     if (isSettleSuccess) {
-      toast({ 
-        title: "✅ Wager settled!", 
-        description: "Funds have been distributed. Check your wallet!" 
+      toast({
+        title: "✅ Wager settled!",
+        description: "Funds have been distributed. Check your wallet!"
       })
     }
   }, [isSettleSuccess])
+
+  useEffect(() => {
+    if (isCrossChainSuccess) {
+      toast({
+        title: "✅ Cross-chain accept successful!",
+        description: "Tokens bridged and wager accepted! The game is now funded!"
+      })
+    }
+  }, [isCrossChainSuccess])
 
   // Show loading state
   if (isLoading) {
@@ -128,8 +185,47 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     )
   }
 
-  // Show error state
+  // Show error state - might be wrong chain!
   if (error) {
+    // Check if error is because contract doesn't exist on this chain
+    const isWrongChain = error?.message?.includes('returned no data') ||
+      error?.message?.includes('does not have the function')
+
+    if (isWrongChain) {
+      // Wager is on a different chain
+      const possibleChains = [
+        { id: 84532, name: 'Base Sepolia' },
+        { id: 421614, name: 'Arbitrum Sepolia' }
+      ]
+
+      return (
+        <Card className="border-yellow-500">
+          <CardHeader>
+            <CardTitle>🌉 Cross-Chain Wager Detected</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-yellow-50 dark:bg-yellow-950 p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">This wager is on a different chain!</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                You're currently on <strong>{getChainName(userChainId)}</strong>, but this wager was created on a different chain.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                To view or accept this wager, please switch to one of these chains:
+              </p>
+              <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                {possibleChains.filter(c => c.id !== userChainId).map(chain => (
+                  <li key={chain.id}>• {chain.name}</li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-xs text-center text-muted-foreground">
+              💡 Tip: Once you switch chains, you can accept this wager. If it's on a different chain than your funds, Avail Nexus will handle the cross-chain bridging automatically!
+            </p>
+          </CardContent>
+        </Card>
+      )
+    }
+
     return (
       <Card>
         <CardContent className="p-6 text-center">
@@ -167,7 +263,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     creatorDeposited,
     opponentDeposited
   } = wagerData
-  
+
   // Check user role
   const isCreator = userAddress?.toLowerCase() === creator.toLowerCase()
   const isOpponent = userAddress?.toLowerCase() === opponent.toLowerCase()
@@ -213,6 +309,36 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
       toast({ title: "Wager accepted!", description: "Transaction is being processed..." })
     } catch (error: any) {
       toast({ title: "Accept failed", description: error?.message, variant: "destructive" })
+    }
+  }
+
+  const handleCrossChainAccept = async () => {
+    if (!opponentUsername.trim()) {
+      toast({ title: "Username required", description: "Please enter your Chess.com username", variant: "destructive" })
+      return
+    }
+    if (!tokenInfo) return
+
+    try {
+      toast({
+        title: "🌉 Starting cross-chain accept...",
+        description: `Bridging ${formattedAmount} ${tokenInfo.symbol} from ${getChainName(userChainId)} to ${getChainName(wagerChainId)}`
+      })
+
+      await acceptCrossChain(
+        wagerAddress,
+        wagerChainId,
+        tokenInfo.symbol as 'USDC' | 'USDT',
+        formattedAmount,
+        tokenInfo.decimals,
+        opponentUsername
+      )
+    } catch (error: any) {
+      toast({
+        title: "Cross-chain accept failed",
+        description: error?.message || "Please try again",
+        variant: "destructive"
+      })
     }
   }
 
@@ -272,7 +398,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               <p className="text-xs text-muted-foreground mt-1">Winner takes all (minus 2% fee)</p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Creator</Label>
@@ -299,7 +425,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               )}
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Created</Label>
@@ -315,7 +441,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             <div>
               <Label className="text-sm font-medium">Chess.com Game ID</Label>
               <p className="text-sm font-mono">{linkedGameId}</p>
-              <a 
+              <a
                 href={`https://www.chess.com/game/live/${linkedGameId}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -325,7 +451,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               </a>
             </div>
           )}
-          
+
           {winner && winner !== "0x0000000000000000000000000000000000000000" && (
             <div>
               <Label className="text-sm font-medium">Winner 🏆</Label>
@@ -335,7 +461,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               )}
             </div>
           )}
-          
+
           {winner === "0x0000000000000000000000000000000000000000" && state === 3 && (
             <div>
               <Label className="text-sm font-medium">Result</Label>
@@ -355,17 +481,52 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
-              <p className="text-sm font-medium">📋 What happens next:</p>
-              <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground">
-                <li>Enter your Chess.com username</li>
-                <li>Approve {tokenInfo?.symbol} tokens (one-time)</li>
-                <li>Deposit your stake ({formattedAmount} {tokenInfo?.symbol})</li>
-                <li>Play the game on Chess.com</li>
-                <li>Winner gets {(parseFloat(formattedAmount) * 2 * 0.98).toFixed(2)} {tokenInfo?.symbol}</li>
-              </ol>
+            {/* DEBUG INFO - Remove after testing */}
+            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs space-y-1 border border-gray-300">
+              <p className="font-bold">🔍 Debug Info:</p>
+              <p>Your Balance: {tokenBalance?.toString() || 'Loading...'} (raw wei)</p>
+              <p>Required: {formattedAmount} {tokenInfo?.symbol}</p>
+              <p>Has Insufficient Balance: <strong>{hasInsufficientBalance ? 'YES ✅' : 'NO ❌'}</strong></p>
+              <p>Show Cross-Chain: <strong>{isCrossChainAccept ? 'YES ✅' : 'NO ❌'}</strong></p>
+              <p className="text-xs text-muted-foreground mt-1">Check browser console (F12) for more details</p>
             </div>
-            
+            {isCrossChainAccept ? (
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-4 rounded-lg space-y-2 border-2 border-blue-300 dark:border-blue-700">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  🌉 Insufficient Balance - Use Cross-Chain Accept!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  You don't have enough {tokenInfo?.symbol} on <strong>{getChainName(userChainId)}</strong>.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  But no worries! Using <strong>Avail Nexus</strong>, you can bridge {tokenInfo?.symbol} from another chain and accept in ONE transaction!
+                </p>
+                <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground mt-2">
+                  <li>Enter your Chess.com username</li>
+                  <li>Click "Bridge & Accept" below</li>
+                  <li>Avail Nexus will find your {tokenInfo?.symbol} on other chains</li>
+                  <li>Bridge it to {getChainName(userChainId)} and accept automatically</li>
+                  <li>All in ONE transaction! ⚡</li>
+                </ol>
+                <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 rounded mt-2">
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    💡 Make sure you have {tokenInfo?.symbol} on Arbitrum Sepolia or another supported chain!
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">📋 What happens next:</p>
+                <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground">
+                  <li>Enter your Chess.com username</li>
+                  <li>Approve {tokenInfo?.symbol} tokens (one-time)</li>
+                  <li>Deposit your stake ({formattedAmount} {tokenInfo?.symbol})</li>
+                  <li>Play the game on Chess.com</li>
+                  <li>Winner gets {(parseFloat(formattedAmount) * 2 * 0.98).toFixed(2)} {tokenInfo?.symbol}</li>
+                </ol>
+              </div>
+            )}
+
             <div>
               <Label htmlFor="opponent-username">Your Chess.com Username</Label>
               <Input
@@ -375,26 +536,50 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 onChange={(e) => setOpponentUsername(e.target.value)}
               />
             </div>
-            
+
             <div className="flex gap-2">
-              {needsApproval ? (
-                <Button 
-                  onClick={handleApprove}
-                  disabled={isApproving || isConfirmingApprove}
-                  className="flex-1"
+              {isCrossChainAccept ? (
+                <Button
+                  onClick={handleCrossChainAccept}
+                  disabled={isCrossChainLoading || !opponentUsername.trim()}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  {isApproving || isConfirmingApprove ? "Approving..." : `Step 1: Approve ${tokenInfo?.symbol}`}
+                  {isBridging ? (
+                    <>🌉 Bridging {formattedAmount} {tokenInfo?.symbol}...</>
+                  ) : isCrossChainLoading ? (
+                    <>⏳ Processing...</>
+                  ) : (
+                    <>🌉 Bridge & Accept from {getChainName(userChainId)}</>
+                  )}
                 </Button>
               ) : (
-                <Button 
-                  onClick={handleAcceptWager}
-                  disabled={isAccepting || isConfirmingAccept || !opponentUsername.trim()}
-                  className="flex-1"
-                >
-                  {isAccepting || isConfirmingAccept ? "Accepting..." : `Step 2: Accept & Deposit ${formattedAmount} ${tokenInfo?.symbol}`}
-                </Button>
+                <>
+                  {needsApproval ? (
+                    <Button
+                      onClick={handleApprove}
+                      disabled={isApproving || isConfirmingApprove}
+                      className="flex-1"
+                    >
+                      {isApproving || isConfirmingApprove ? "Approving..." : `Step 1: Approve ${tokenInfo?.symbol}`}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleAcceptWager}
+                      disabled={isAccepting || isConfirmingAccept || !opponentUsername.trim()}
+                      className="flex-1"
+                    >
+                      {isAccepting || isConfirmingAccept ? "Accepting..." : `Step 2: Accept & Deposit ${formattedAmount} ${tokenInfo?.symbol}`}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
+
+            {isCrossChainAccept && (
+              <p className="text-xs text-center text-muted-foreground">
+                ⚡ Powered by Avail Nexus - Estimated time: 2-5 minutes
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -416,9 +601,9 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 <li>You can cancel and get refund if opponent doesn't accept</li>
               </ul>
             </div>
-            
+
             {needsApproval ? (
-              <Button 
+              <Button
                 onClick={handleApprove}
                 disabled={isApproving || isConfirmingApprove}
                 className="w-full"
@@ -426,7 +611,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 {isApproving || isConfirmingApprove ? "Approving..." : `Step 1: Approve ${tokenInfo?.symbol}`}
               </Button>
             ) : (
-              <Button 
+              <Button
                 onClick={handleDeposit}
                 disabled={isDepositing || isConfirmingDeposit}
                 className="w-full"
@@ -437,7 +622,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-      
+
       {isCreator && state === 0 && creatorDeposited && !opponentDeposited && (
         <Card>
           <CardHeader>
@@ -455,7 +640,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Link Game Section - State: Funded (1) */}
       {canLinkGame && (
         <Card className="border-yellow-500">
@@ -476,7 +661,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 <li>After the game finishes, Reclaim will verify the result</li>
               </ol>
             </div>
-            
+
             <div>
               <Label htmlFor="game-id">Chess.com Game ID</Label>
               <Input
@@ -489,8 +674,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 Find this in your Chess.com game URL: chess.com/game/live/<strong>[ID]</strong>
               </p>
             </div>
-            
-            <Button 
+
+            <Button
               onClick={handleLinkGame}
               disabled={isLinking || isConfirmingLink || !gameId.trim()}
               className="w-full"
@@ -500,7 +685,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Waiting for Game - State: GameLinked (2) */}
       {isParticipant && state === 2 && (
         <Card>
@@ -521,7 +706,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               </ul>
             </div>
             {linkedGameId && (
-              <a 
+              <a
                 href={`https://www.chess.com/game/live/${linkedGameId}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -535,7 +720,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Settle Wager - State: Completed (3) */}
       {canSettle && (
         <Card className="border-green-500">
@@ -567,8 +752,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 </>
               )}
             </div>
-            
-            <Button 
+
+            <Button
               onClick={handleSettle}
               disabled={isSettling || isConfirmingSettle}
               className="w-full"
@@ -579,7 +764,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-      
+
       {/* Settled - State: Settled (4) */}
       {state === 4 && (
         <Card className="border-gray-500">
