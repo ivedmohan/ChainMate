@@ -109,8 +109,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   // Show cross-chain option if user has insufficient balance
   // This means they likely have funds on another chain
   const isCrossChainAccept = useMemo(() => {
-    console.log('🌉 Cross-chain check:', { hasInsufficientBalance })
-    // Show cross-chain option if user has insufficient balance
     return hasInsufficientBalance
   }, [hasInsufficientBalance])
 
@@ -241,8 +239,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     return (
       <Card>
         <CardContent className="p-6 text-center">
-          <p className="text-muted-foreground">Error loading wager data</p>
-          <p className="text-sm text-red-500 mt-2">{error?.message}</p>
+          <p className="text-muted-foreground">No wager data available</p>
         </CardContent>
       </Card>
     )
@@ -321,8 +318,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
 
     try {
       toast({
-        title: "🌉 Starting cross-chain accept...",
-        description: `Bridging ${formattedAmount} ${tokenInfo.symbol} from ${getChainName(userChainId)} to ${getChainName(wagerChainId)}`
+        title: "Starting cross-chain accept...",
+        description: `Bridging ${formattedAmount} ${tokenInfo.symbol} and accepting wager`
       })
 
       await acceptCrossChain(
@@ -481,38 +478,20 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* DEBUG INFO - Remove after testing */}
-            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs space-y-1 border border-gray-300">
-              <p className="font-bold">🔍 Debug Info:</p>
-              <p>Your Balance: {tokenBalance?.toString() || 'Loading...'} (raw wei)</p>
-              <p>Required: {formattedAmount} {tokenInfo?.symbol}</p>
-              <p>Has Insufficient Balance: <strong>{hasInsufficientBalance ? 'YES ✅' : 'NO ❌'}</strong></p>
-              <p>Show Cross-Chain: <strong>{isCrossChainAccept ? 'YES ✅' : 'NO ❌'}</strong></p>
-              <p className="text-xs text-muted-foreground mt-1">Check browser console (F12) for more details</p>
-            </div>
             {isCrossChainAccept ? (
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-4 rounded-lg space-y-2 border-2 border-blue-300 dark:border-blue-700">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  🌉 Insufficient Balance - Use Cross-Chain Accept!
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium">
+                  Cross-Chain Accept Available
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  You don't have enough {tokenInfo?.symbol} on <strong>{getChainName(userChainId)}</strong>.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  But no worries! Using <strong>Avail Nexus</strong>, you can bridge {tokenInfo?.symbol} from another chain and accept in ONE transaction!
+                  You don't have enough {tokenInfo?.symbol} on {getChainName(userChainId)}. Using Avail Nexus, you can bridge from another chain and accept in one transaction.
                 </p>
                 <ol className="text-xs space-y-1 list-decimal list-inside text-muted-foreground mt-2">
                   <li>Enter your Chess.com username</li>
                   <li>Click "Bridge & Accept" below</li>
-                  <li>Avail Nexus will find your {tokenInfo?.symbol} on other chains</li>
-                  <li>Bridge it to {getChainName(userChainId)} and accept automatically</li>
-                  <li>All in ONE transaction! ⚡</li>
+                  <li>Avail Nexus will automatically find and bridge your {tokenInfo?.symbol}</li>
+                  <li>Wager will be accepted in one transaction</li>
                 </ol>
-                <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 rounded mt-2">
-                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                    💡 Make sure you have {tokenInfo?.symbol} on Arbitrum Sepolia or another supported chain!
-                  </p>
-                </div>
               </div>
             ) : (
               <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg space-y-2">
@@ -542,14 +521,14 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 <Button
                   onClick={handleCrossChainAccept}
                   disabled={isCrossChainLoading || !opponentUsername.trim()}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  className="flex-1"
                 >
                   {isBridging ? (
-                    <>🌉 Bridging {formattedAmount} {tokenInfo?.symbol}...</>
+                    <>Bridging {formattedAmount} {tokenInfo?.symbol}...</>
                   ) : isCrossChainLoading ? (
-                    <>⏳ Processing...</>
+                    <>Processing...</>
                   ) : (
-                    <>🌉 Bridge & Accept from {getChainName(userChainId)}</>
+                    <>Bridge & Accept</>
                   )}
                 </Button>
               ) : (
@@ -577,7 +556,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
 
             {isCrossChainAccept && (
               <p className="text-xs text-center text-muted-foreground">
-                ⚡ Powered by Avail Nexus - Estimated time: 2-5 minutes
+                Powered by Avail Nexus • Estimated time: 2-5 minutes
               </p>
             )}
           </CardContent>
