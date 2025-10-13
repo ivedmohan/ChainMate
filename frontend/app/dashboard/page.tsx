@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { RefreshButton } from "@/components/refresh-button"
 import { formatTokenAmount } from "@/lib/hooks"
 import { RefreshCw } from "lucide-react"
+import { ClientOnly } from "@/components/client-only"
 import type { Address } from "viem"
 
 // Convert contract wager data to our frontend format
@@ -296,7 +297,7 @@ function AvailableWagerCard({
   return <WagerCard wager={availableWager} />
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { address: userAddress, isConnected } = useAccount()
   const { invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
   
@@ -371,5 +372,21 @@ export default function DashboardPage() {
         </section>
       </div>
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <ClientOnly fallback={
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <DashboardContent />
+    </ClientOnly>
   )
 }

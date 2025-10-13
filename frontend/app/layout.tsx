@@ -13,8 +13,8 @@ import { DataUpdateNotifier } from "@/components/data-update-notifier"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "ChainMate - P2P Chess Wagering",
-  description: "Wager on chess games with zero-knowledge proofs",
+  title: "ChainMate - Play Proof Win",
+  description: "Chess wagering with zero-knowledge proofs. Play, prove your wins, and claim rewards trustlessly.",
   generator: "ChainMate",
 }
 

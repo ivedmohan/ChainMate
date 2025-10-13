@@ -2,10 +2,16 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from "@/components/ui/button"
+import { ClientOnly } from "@/components/client-only"
 
 export function WalletButton() {
   return (
-    <ConnectButton.Custom>
+    <ClientOnly fallback={
+      <Button size="sm" disabled>
+        Loading...
+      </Button>
+    }>
+      <ConnectButton.Custom>
       {({
         account,
         chain,
@@ -98,5 +104,6 @@ export function WalletButton() {
         )
       }}
     </ConnectButton.Custom>
+    </ClientOnly>
   )
 }

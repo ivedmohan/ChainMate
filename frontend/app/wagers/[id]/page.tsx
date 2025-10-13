@@ -606,7 +606,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   )
 }
 
-export default function WagerDetailPage() {
+function WagerDetailPageContent() {
   const params = useParams()
   const wagerAddress = params.id as string
   const { isConnected } = useAccount()
@@ -637,15 +637,23 @@ export default function WagerDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <ClientOnly fallback={
+      <WagerDetailContent wagerAddress={wagerAddress as Address} />
+    </div>
+  )
+}
+
+export default function WagerDetailPage() {
+  return (
+    <ClientOnly fallback={
+      <div className="container mx-auto px-4 py-8">
         <Card>
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground">Loading wager details...</p>
           </CardContent>
         </Card>
-      }>
-        <WagerDetailContent wagerAddress={wagerAddress as Address} />
-      </ClientOnly>
-    </div>
+      </div>
+    }>
+      <WagerDetailPageContent />
+    </ClientOnly>
   )
 }
