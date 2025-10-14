@@ -11,6 +11,7 @@ import { RealTimeIndicator } from "@/components/real-time-indicator"
 import { VisibilityRefreshProvider } from "@/components/visibility-refresh-provider"
 import { DataUpdateNotifier } from "@/components/data-update-notifier"
 import { Suspense } from "react"
+import { BlockscoutProvider } from "@/components/blockscout-provider"
 
 export const metadata: Metadata = {
   title: "ChainMate - Play Proof Win",
@@ -26,21 +27,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Web3Provider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem suppressHydrationWarning>
-            <Suspense fallback={<div>Loading...</div>}>
-              <VisibilityRefreshProvider>
-                <Navbar />
-                <RealTimeIndicator />
-                <DataUpdateNotifier />
-                <main className="min-h-[calc(100dvh-64px)]" suppressHydrationWarning>
-                  {children}
-                </main>
-                <Toaster />
-              </VisibilityRefreshProvider>
-            </Suspense>
-          </ThemeProvider>
-        </Web3Provider>
+        <BlockscoutProvider>
+          <Web3Provider>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <Suspense fallback={<div>Loading...</div>}>
+                <VisibilityRefreshProvider>
+                  <Navbar />
+                  <RealTimeIndicator />
+                  <DataUpdateNotifier />
+                  <main className="min-h-[calc(100dvh-64px)]" suppressHydrationWarning>
+                    {children}
+                  </main>
+                  <Toaster />
+                </VisibilityRefreshProvider>
+              </Suspense>
+            </ThemeProvider>
+          </Web3Provider>
+        </BlockscoutProvider>
       </body>
     </html>
   )

@@ -15,6 +15,7 @@ import { RefreshButton } from "@/components/refresh-button"
 import { useState, useMemo, useEffect } from "react"
 import type { Address } from "viem"
 import { ClientOnly } from "@/components/client-only"
+import { useTransactionPopup } from "@blockscout/app-sdk"
 
 const STATUS_COLORS = {
   open: "bg-blue-500",
@@ -29,6 +30,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const supportedTokens = useSupportedTokens()
   const { wagerFactory } = useContractAddresses()
   const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
+  const { openPopup } = useTransactionPopup()
 
   const [opponentUsername, setOpponentUsername] = useState("")
   const [gameId, setGameId] = useState("")
@@ -465,6 +467,26 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               <Badge variant="outline">Draw 🤝</Badge>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Transaction History */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>📊 Transaction History</CardTitle>
+            <Button 
+              variant="outline" 
+              onClick={() => openPopup({ chainId: userChainId.toString(), address: wagerAddress })}
+            >
+              View All Transactions
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            View all transactions related to this wager on Blockscout explorer. Track deposits, accepts, game links, and settlements in real-time.
+          </p>
         </CardContent>
       </Card>
 

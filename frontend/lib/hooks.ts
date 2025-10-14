@@ -5,6 +5,7 @@ import { parseUnits, formatUnits, type Address } from 'viem'
 import { useQueryClient } from '@tanstack/react-query'
 import { CONTRACTS, SUPPORTED_TOKENS } from './wagmi'
 import { WAGER_FACTORY_ABI, WAGER_ABI, ERC20_ABI } from './abis'
+import { useNotification } from '@blockscout/app-sdk'
 
 // Hook to get supported tokens for current chain
 export function useSupportedTokens() {
@@ -24,7 +25,7 @@ export function useContractAddresses() {
 // Hook to check if a token is supported
 export function useIsSupportedToken(tokenAddress: Address) {
   const { wagerFactory } = useContractAddresses()
-  
+
   return useReadContract({
     address: wagerFactory,
     abi: WAGER_FACTORY_ABI,
@@ -36,7 +37,7 @@ export function useIsSupportedToken(tokenAddress: Address) {
 // Hook to get user's wagers
 export function useUserWagers(userAddress?: Address) {
   const { wagerFactory } = useContractAddresses()
-  
+
   return useReadContract({
     address: wagerFactory,
     abi: WAGER_FACTORY_ABI,
@@ -55,7 +56,7 @@ export function useUserWagers(userAddress?: Address) {
 // Hook to get all wagers (paginated)
 export function useAllWagers(start: number = 0, limit: number = 50) {
   const { wagerFactory } = useContractAddresses()
-  
+
   return useReadContract({
     address: wagerFactory,
     abi: WAGER_FACTORY_ABI,
@@ -123,10 +124,19 @@ export function useCreateWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { wagerFactory } = useContractAddresses()
   const { invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   // Invalidate queries when transaction succeeds
   React.useEffect(() => {
@@ -134,7 +144,7 @@ export function useCreateWager() {
       // Invalidate immediately and then again after a short delay to ensure fresh data
       invalidateUserWagers()
       invalidateAllWagers()
-      
+
       // Also invalidate after a short delay to catch any blockchain delays
       setTimeout(() => {
         invalidateUserWagers()
@@ -151,7 +161,7 @@ export function useCreateWager() {
     creatorChessUsername: string
   ) => {
     const amountWei = parseUnits(amount, decimals)
-    
+
     writeContract({
       address: wagerFactory,
       abi: WAGER_FACTORY_ABI,
@@ -174,13 +184,22 @@ export function useCreateWager() {
 export function useApproveToken() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { invalidateTokenData } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
 
   // Track the token address for invalidation
   const [lastTokenAddress, setLastTokenAddress] = React.useState<Address>()
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   React.useEffect(() => {
     if (isSuccess && lastTokenAddress) {
@@ -193,7 +212,7 @@ export function useApproveToken() {
   const approve = async (tokenAddress: Address, spenderAddress: Address, amount: string, decimals: number) => {
     const amountWei = parseUnits(amount, decimals)
     setLastTokenAddress(tokenAddress)
-    
+
     writeContract({
       address: tokenAddress,
       abi: ERC20_ABI,
@@ -216,12 +235,21 @@ export function useApproveToken() {
 export function useDepositToWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { invalidateWagerData, invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
 
   const [lastWagerAddress, setLastWagerAddress] = React.useState<Address>()
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   React.useEffect(() => {
     if (isSuccess && lastWagerAddress) {
@@ -256,12 +284,21 @@ export function useDepositToWager() {
 export function useAcceptWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { invalidateWagerData, invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
 
   const [lastWagerAddress, setLastWagerAddress] = React.useState<Address>()
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   React.useEffect(() => {
     if (isSuccess && lastWagerAddress) {
@@ -297,12 +334,21 @@ export function useAcceptWager() {
 export function useLinkGame() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { invalidateWagerData, invalidateUserWagers } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
 
   const [lastWagerAddress, setLastWagerAddress] = React.useState<Address>()
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   React.useEffect(() => {
     if (isSuccess && lastWagerAddress) {
@@ -337,12 +383,21 @@ export function useLinkGame() {
 export function useSettleWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
   const { invalidateWagerData, invalidateUserWagers, invalidateAllWagers } = useInvalidateWagerQueries()
-  
+  const { openTxToast } = useNotification()
+  const chainId = useChainId()
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
 
   const [lastWagerAddress, setLastWagerAddress] = React.useState<Address>()
+
+  // Show Blockscout toast when transaction is submitted
+  React.useEffect(() => {
+    if (hash) {
+      openTxToast(chainId.toString(), hash)
+    }
+  }, [hash, chainId, openTxToast])
 
   React.useEffect(() => {
     if (isSuccess && lastWagerAddress) {
@@ -376,7 +431,7 @@ export function useSettleWager() {
 // Hook for cancelling wager
 export function useCancelWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
@@ -402,7 +457,7 @@ export function useCancelWager() {
 // Hook for mutual cancellation
 export function useVoteToCancelMutual() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
@@ -428,7 +483,7 @@ export function useVoteToCancelMutual() {
 // Hook for claiming timeout
 export function useClaimTimeout() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
@@ -454,7 +509,7 @@ export function useClaimTimeout() {
 // Hook for disputing wager
 export function useDisputeWager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract()
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   })
@@ -492,63 +547,63 @@ export function parseTokenAmount(amount: string, decimals: number): bigint {
 export function useInvalidateWagerQueries() {
   const queryClient = useQueryClient()
   const { address: userAddress } = useAccount()
-  
+
   const invalidateAll = () => {
     // Invalidate all wager-related queries
     queryClient.invalidateQueries({ queryKey: ['readContract'] })
   }
-  
+
   const invalidateUserWagers = () => {
     if (userAddress) {
       // Invalidate and refetch user wagers
-      queryClient.invalidateQueries({ 
-        queryKey: ['readContract', { 
+      queryClient.invalidateQueries({
+        queryKey: ['readContract', {
           functionName: 'getUserWagers',
-          args: [userAddress] 
-        }] 
+          args: [userAddress]
+        }]
       })
       // Also force refetch
-      queryClient.refetchQueries({ 
-        queryKey: ['readContract', { 
+      queryClient.refetchQueries({
+        queryKey: ['readContract', {
           functionName: 'getUserWagers',
-          args: [userAddress] 
-        }] 
+          args: [userAddress]
+        }]
       })
     }
   }
-  
+
   const invalidateAllWagers = () => {
     // Invalidate and refetch all wagers
-    queryClient.invalidateQueries({ 
-      queryKey: ['readContract', { 
-        functionName: 'getWagers' 
-      }] 
+    queryClient.invalidateQueries({
+      queryKey: ['readContract', {
+        functionName: 'getWagers'
+      }]
     })
     // Also force refetch
-    queryClient.refetchQueries({ 
-      queryKey: ['readContract', { 
-        functionName: 'getWagers' 
-      }] 
+    queryClient.refetchQueries({
+      queryKey: ['readContract', {
+        functionName: 'getWagers'
+      }]
     })
   }
-  
+
   const invalidateWagerData = (wagerAddress: Address) => {
-    queryClient.invalidateQueries({ 
-      queryKey: ['readContract', { 
+    queryClient.invalidateQueries({
+      queryKey: ['readContract', {
         address: wagerAddress,
-        functionName: 'getWagerData' 
-      }] 
+        functionName: 'getWagerData'
+      }]
     })
   }
-  
+
   const invalidateTokenData = (tokenAddress: Address) => {
-    queryClient.invalidateQueries({ 
-      queryKey: ['readContract', { 
-        address: tokenAddress 
-      }] 
+    queryClient.invalidateQueries({
+      queryKey: ['readContract', {
+        address: tokenAddress
+      }]
     })
   }
-  
+
   return {
     invalidateAll,
     invalidateUserWagers,
