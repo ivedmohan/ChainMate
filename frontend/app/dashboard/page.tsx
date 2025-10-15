@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState } from "react"
 import { useAccount } from "wagmi"
 import { useUserWagers, useAllWagers, useWagerData, useSupportedTokens, useInvalidateWagerQueries } from "@/lib/hooks"
 import { WagerCard } from "@/components/wager-card"
@@ -71,6 +71,7 @@ function formatWagerData(wagerAddress: Address, wagerData: any, supportedTokens:
 }
 
 function WagersList({ userAddress }: { userAddress: Address }) {
+  const [displayCount, setDisplayCount] = useState(6)
   const supportedTokens = useSupportedTokens()
   const { data: wagerAddresses, isLoading: isLoadingAddresses, error: addressError } = useUserWagers(userAddress)
 
@@ -110,15 +111,30 @@ function WagersList({ userAddress }: { userAddress: Address }) {
     )
   }
 
+  const displayedWagers = wagerAddresses.slice(0, displayCount)
+  const hasMore = wagerAddresses.length > displayCount
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {wagerAddresses.map((wagerAddress: Address) => (
-        <WagerDataCard 
-          key={wagerAddress} 
-          wagerAddress={wagerAddress} 
-          supportedTokens={supportedTokens}
-        />
-      ))}
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {displayedWagers.map((wagerAddress: Address) => (
+          <WagerDataCard 
+            key={wagerAddress} 
+            wagerAddress={wagerAddress} 
+            supportedTokens={supportedTokens}
+          />
+        ))}
+      </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setDisplayCount(prev => prev + 6)}
+            className="px-6 py-2 text-sm font-medium border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Load More ({wagerAddresses.length - displayCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -178,6 +194,7 @@ function WagerDataCard({ wagerAddress, supportedTokens }: { wagerAddress: Addres
 }
 
 function AvailableWagersList({ userAddress }: { userAddress: Address }) {
+  const [displayCount, setDisplayCount] = useState(6)
   const supportedTokens = useSupportedTokens()
   const { data: allWagerAddresses, isLoading: isLoadingAll, error: allError } = useAllWagers(0, 50)
 
@@ -223,16 +240,31 @@ function AvailableWagersList({ userAddress }: { userAddress: Address }) {
     return true // Let the individual component handle filtering
   })
 
+  const displayedWagers = availableWagers.slice(0, displayCount)
+  const hasMore = availableWagers.length > displayCount
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {availableWagers.map((wagerAddress: Address) => (
-        <AvailableWagerCard 
-          key={wagerAddress} 
-          wagerAddress={wagerAddress} 
-          supportedTokens={supportedTokens}
-          userAddress={userAddress}
-        />
-      ))}
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        {displayedWagers.map((wagerAddress: Address) => (
+          <AvailableWagerCard 
+            key={wagerAddress} 
+            wagerAddress={wagerAddress} 
+            supportedTokens={supportedTokens}
+            userAddress={userAddress}
+          />
+        ))}
+      </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setDisplayCount(prev => prev + 6)}
+            className="px-6 py-2 text-sm font-medium border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Load More ({availableWagers.length - displayCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -356,19 +388,22 @@ function DashboardContent() {
       </header>
       
       <div className="space-y-8">
-        {/* Your Wagers */}
+        {/* Available Wagers to Accept - Show first for better UX */}
         <section>
-          <h2 className="text-xl font-semibold mb-4">Your Wagers</h2>
-          <WagersList userAddress={userAddress} />
-        </section>
-
-        {/* Available Wagers to Accept */}
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Available Wagers</h2>
+          <h2 className="text-xl font-semibold mb-4">🎯 Available Wagers</h2>
           <p className="text-sm text-muted-foreground mb-4">
             Open wagers from other players that you can accept
           </p>
           <AvailableWagersList userAddress={userAddress} />
+        </section>
+
+        {/* Your Wagers */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">📋 My Wagers</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Wagers you've created or accepted
+          </p>
+          <WagersList userAddress={userAddress} />
         </section>
       </div>
     </div>

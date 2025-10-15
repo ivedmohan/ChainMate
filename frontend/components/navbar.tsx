@@ -11,14 +11,18 @@ export function Navbar() {
     { href: "/", label: "Home" },
     { href: "/wagers/new", label: "Create" },
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/games/manage", label: "Manage" },
+    { href: "/stats", label: "Stats" },
   ]
 
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur border-b">
       <nav className="container mx-auto h-16 px-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <span className="h-6 w-6 rounded-md bg-primary" aria-hidden />
+          <img
+            src="/logo.jpg"
+            alt="ChainMate Logo"
+            className="h-8 w-8 rounded-md object-cover"
+          />
           <span className="font-semibold">ChainMate</span>
         </Link>
         <div className="hidden md:flex items-center gap-1">

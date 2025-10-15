@@ -15,6 +15,7 @@ import { RefreshButton } from "@/components/refresh-button"
 import { useState, useMemo, useEffect } from "react"
 import type { Address } from "viem"
 import { ClientOnly } from "@/components/client-only"
+import { WagerVerificationDetails } from "@/components/wager-verification-details"
 import { useTransactionPopup } from "@blockscout/app-sdk"
 
 const STATUS_COLORS = {
@@ -470,25 +471,8 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
         </CardContent>
       </Card>
 
-      {/* Transaction History */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>📊 Transaction History</CardTitle>
-            <Button 
-              variant="outline" 
-              onClick={() => openPopup({ chainId: userChainId.toString(), address: wagerAddress })}
-            >
-              View All Transactions
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            View all transactions related to this wager on Blockscout explorer. Track deposits, accepts, game links, and settlements in real-time.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Transaction History & ZK Verification */}
+      <WagerVerificationDetails wagerAddress={wagerAddress} wagerData={wagerData} />
 
       {/* Actions */}
       {canAccept && (

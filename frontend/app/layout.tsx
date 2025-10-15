@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "ChainMate - Play Proof Win",
   description: "Chess wagering with zero-knowledge proofs. Play, prove your wins, and claim rewards trustlessly.",
   generator: "ChainMate",
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 }
 
 export default function RootLayout({
@@ -25,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <BlockscoutProvider>
           <Web3Provider>
