@@ -464,7 +464,7 @@ sequenceDiagram
 
 ---
 
-## 8. Blockscout Integration (Tomorrow's Work)
+## 8. Blockscout Integration
 
 ```mermaid
 graph TB

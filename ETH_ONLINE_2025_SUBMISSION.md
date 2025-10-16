@@ -76,7 +76,7 @@
 - Real-time status updates
 - Multi-chain support (Base & Arbitrum)
 
-**Architecture**: See [ARCHITECTURE_DIAGRAMS.md - Section 8](./ARCHITECTURE_DIAGRAMS.md#8-blockscout-integration-tomorrows-work)
+**Architecture**: See [ARCHITECTURE_DIAGRAMS.md - Section 8](./ARCHITECTURE_DIAGRAMS.md#8-blockscout-sdk-integration)
 
 ---
 
@@ -262,14 +262,9 @@ chainmate/
 
 ## 🔗 Important Links
 
-### Live Demo
-- Frontend: [URL]
-- Base Sepolia Explorer: https://base-sepolia.blockscout.com
-- Arbitrum Sepolia Explorer: https://sepolia.arbiscan.io
-
-### Repository
-- GitHub: [Repository URL]
-- Documentation: See `/docs` folder
+### Blockchain Explorers
+- Base Sepolia: https://base-sepolia.blockscout.com
+- Arbitrum Sepolia: https://sepolia.arbiscan.io
 
 ### Partner Documentation
 - Avail Nexus: https://docs.availproject.org/nexus
@@ -330,7 +325,5 @@ Together, these technologies create a seamless, trustless, and transparent wager
 ---
 
 **Built for ETH Online 2025** 🚀
-
-**Team**: [Your Team Name]
 
 **Powered by**: Avail Nexus • Hardhat 3 • Blockscout • Reclaim Protocol
