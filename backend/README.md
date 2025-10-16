@@ -1,23 +1,59 @@
 # ChainMate Backend
 
-Backend service for ChainMate P2P ZK Wagering platform. Handles Reclaim Protocol integration for zero-knowledge proof generation and verification of Chess.com game outcomes.
+> Node.js + Express backend with automated Chess.com game verification via Reclaim Protocol
 
-## 🚀 Features
+## 🏗️ Tech Stack
 
-- **Reclaim Protocol Integration**: Generate and verify ZK proofs for Chess.com games
-- **Chess.com API Integration**: Fetch and validate game data
-- **RESTful API**: Clean endpoints for frontend integration
-- **Rate Limiting**: Prevent API abuse
-- **Input Validation**: Zod schema validation
-- **Error Handling**: Comprehensive error management
-- **TypeScript**: Full type safety
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Blockchain**: Ethers.js v6
+- **Scheduling**: node-cron
+- **Logging**: Pino
+- **Testing**: Jest
 
-## 📋 Prerequisites
+---
 
-- Node.js >= 18.0.0
-- npm >= 9.0.0
+## 📁 Project Structure
 
-## 🛠️ Installation
+```
+backend/
+├── src/
+│   ├── index.ts                 # Main server entry point
+│   ├── routes/                  # API endpoints
+│   │   ├── health.ts           # Health check
+│   │   ├── reclaim.ts          # Reclaim proof generation
+│   │   └── verification.ts     # Manual verification
+│   │
+│   ├── services/                # Business logic
+│   │   ├── autoVerificationService.ts  # Auto-verify games
+│   │   ├── reclaimService.ts          # Reclaim SDK wrapper
+│   │   └── chessService.ts            # Chess.com API
+│   │
+│   ├── contracts/               # Smart contract ABIs
+│   │   └── abis.ts             # Contract interfaces
+│   │
+│   └── middleware/              # Express middleware
+│       ├── errorHandler.ts     # Error handling
+│       └── logger.ts           # Request logging
+│
+├── logs/                        # Service logs
+├── dist/                        # Compiled JavaScript
+└── tests/                       # Unit tests
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Private key for verifier wallet
+- RPC URLs for target chains
+
+### Installation
 
 ```bash
 # Install dependencies
@@ -26,233 +62,551 @@ npm install
 # Copy environment variables
 cp .env.example .env
 
-# Edit .env with your configuration
-nano .env
+# Build TypeScript
+npm run build
+
+# Start server
+npm run dev
 ```
 
-## 🔧 Configuration
+### Environment Variables
 
-Update `.env` file with your settings:
+Create `.env`:
 
-```bash
-# Server Configuration
+```env
+# Server
 PORT=3001
 NODE_ENV=development
 
-# Reclaim Protocol Configuration
-RECLAIM_APP_ID=your_reclaim_app_id
-RECLAIM_APP_SECRET=your_reclaim_app_secret
+# Verifier Wallet
+VERIFIER_PRIVATE_KEY=0x...
 
-# Chess.com API Configuration
-CHESS_COM_API_BASE_URL=https://api.chess.com/pub
+# Base Sepolia
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+BASE_RECLAIM_VERIFIER_ADDRESS=0x...
+BASE_WAGER_FACTORY_ADDRESS=0x...
 
-# CORS Configuration
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+# Arbitrum Sepolia
+ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+ARBITRUM_RECLAIM_VERIFIER_ADDRESS=0x...
+ARBITRUM_WAGER_FACTORY_ADDRESS=0x...
 
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
+# Reclaim Protocol
+RECLAIM_APP_ID=your_app_id
+RECLAIM_APP_SECRET=your_app_secret
+
+# Logging
+LOG_LEVEL=info
 ```
 
-## 🚀 Running the Server
+---
 
-```bash
-# Development mode (with hot reload)
-npm run dev
-
-# Development with logging
-npm run dev:log
-
-# Production build
-npm run build
-npm start
-
-# Production with logging
-npm run start:log
-
-# Run tests
-npm test
-
-# Clean build and logs
-npm run clean
-```
-
-## 📋 Logs
-
-Server logs are stored in the `logs/` directory:
-- `logs/server.log` - Main server log file
-- Use `npm run dev:log` or `npm run start:log` to enable file logging
-
-## 📡 API Endpoints
+## 🔌 API Endpoints
 
 ### Health Check
-```
-GET /health
+
+```http
+GET /api/health
 ```
 
-### Reclaim Protocol Endpoints
-
-#### Generate Proof Request
+**Response**:
+```json
+{
+  "status": "ok",
+  "timestamp": "2024-10-16T19:00:00.000Z",
+  "uptime": 3600,
+  "service": "chainmate-backend"
+}
 ```
+
+---
+
+### Generate Reclaim Proof
+
+```http
 POST /api/reclaim/generate-proof
 Content-Type: application/json
 
 {
-  "gameId": "12345678",
-  "expectedWinner": "username" // optional
+  "gameUrl": "https://www.chess.com/game/live/123456789"
 }
 ```
 
-#### Verify Proof
+**Response**:
+```json
+{
+  "success": true,
+  "proof": {
+    "claimData": {...},
+    "signatures": [...],
+    "witnesses": [...]
+  }
+}
 ```
-POST /api/reclaim/verify-proof
+
+---
+
+### Manual Verification
+
+```http
+POST /api/verification/verify-wager
 Content-Type: application/json
 
 {
-  "proof": { /* Reclaim proof object */ },
-  "gameId": "12345678"
+  "wagerAddress": "0x...",
+  "chainId": 84532
 }
 ```
 
-#### Check Proof Status
-```
-GET /api/reclaim/proof-status/:requestId
-```
-
-### Chess.com API Endpoints
-
-#### Get Game Data
-```
-GET /api/chess/game/:gameId
-```
-
-#### Validate Game
-```
-POST /api/chess/validate-game
-Content-Type: application/json
-
+**Response**:
+```json
 {
-  "gameId": "12345678"
+  "success": true,
+  "txHash": "0x...",
+  "winner": "0x...",
+  "result": "1-0"
 }
 ```
 
-#### Get Player Games
-```
-POST /api/chess/player-games
-Content-Type: application/json
+---
 
+### Verification Service Status
+
+```http
+GET /api/verification/status
+```
+
+**Response**:
+```json
 {
-  "username": "hikaru",
-  "limit": 10 // optional, default 10, max 50
+  "isRunning": true,
+  "wallet": "0x...",
+  "chains": [
+    {
+      "name": "Base Sepolia",
+      "chainId": 84532,
+      "reclaimVerifier": "0x...",
+      "wagerFactory": "0x..."
+    }
+  ],
+  "chainsCount": 2
 }
 ```
 
-#### Chess.com API Health Check
-```
-GET /api/chess/health
+---
+
+## 🤖 Auto-Verification Service
+
+The auto-verification service runs continuously, checking for completed Chess.com games and submitting proofs to the blockchain.
+
+### How It Works
+
+```mermaid
+sequenceDiagram
+    participant Cron
+    participant Service
+    participant Factory
+    participant Wager
+    participant ChessCom as Chess.com
+    participant Reclaim
+    participant Verifier
+    
+    Cron->>Service: Every 1 minute
+    Service->>Factory: Get all wagers
+    Factory->>Service: Wager addresses
+    
+    loop For each wager
+        Service->>Wager: Get wager data
+        Wager->>Service: State = GameLinked
+        
+        Service->>ChessCom: Fetch game result
+        ChessCom->>Service: Game data
+        
+        Service->>Reclaim: Generate zkTLS proof
+        Reclaim->>Service: Signed proof
+        
+        Service->>Verifier: Submit proof
+        Verifier->>Wager: Resolve wager
+        Wager->>Wager: Set winner
+    end
 ```
 
-## 🔄 Workflow
+### Starting the Service
 
-1. **Game Validation**: Validate Chess.com game exists and is completed
-2. **Proof Generation**: Generate Reclaim proof request for the game
-3. **User Interaction**: User completes proof generation via Reclaim
-4. **Proof Verification**: Verify submitted proof and cross-check with Chess.com
-5. **Smart Contract**: Submit verified proof to blockchain
+```bash
+# Development mode (with auto-reload)
+npm run verify:dev
+
+# Production mode
+npm run verify
+
+# As background service
+npm run verify:daemon
+```
+
+### Service Logs
+
+Logs are written to `logs/` directory:
+
+```
+logs/
+├── verification-2024-10-16.log
+├── verification-2024-10-17.log
+└── error.log
+```
+
+### Configuration
+
+```typescript
+// src/services/autoVerificationService.ts
+
+export class AutoVerificationService {
+  private checkInterval: number = 60000 // 1 minute
+  
+  // Customize check interval
+  constructor(checkInterval?: number) {
+    this.checkInterval = checkInterval || 60000
+  }
+}
+```
+
+---
+
+## 🔐 Reclaim Protocol Integration
+
+### Provider Configuration
+
+**Provider ID**: `41ec4915-c413-4d4a-9c21-e8639f7997c2`
+
+**Extracted Parameters**:
+- `URL_PARAMS_1_GRD`: Game ID
+- `white_paper`: White player username
+- `black_player`: Black player username
+- `result`: Game result (1-0, 0-1, 1/2-1/2)
+
+### Proof Generation
+
+```typescript
+import { reclaimService } from './services/reclaimService'
+
+const proof = await reclaimService.generateProof(
+  'https://www.chess.com/game/live/123456789'
+)
+
+// Proof structure
+{
+  claimData: {
+    provider: '41ec4915-c413-4d4a-9c21-e8639f7997c2',
+    parameters: '123456789',
+    context: JSON.stringify({
+      extractedParameters: {
+        URL_PARAMS_1_GRD: '123456789',
+        white_paper: 'player1',
+        black_player: 'player2',
+        result: '1-0'
+      }
+    }),
+    timestampS: '1697472000'
+  },
+  signatures: [...],
+  witnesses: [...]
+}
+```
+
+### Winner Determination Logic
+
+**CRITICAL**: Fixed bug in winner determination (line 428-445)
+
+```typescript
+private determineWinnerAddress(
+  gameData: any,
+  creatorAddress: string,
+  opponentAddress: string,
+  creatorUsername: string,
+  opponentUsername: string
+): string {
+  const result = gameData.result
+  
+  // Parse Chess.com result
+  // "1-0" = White wins
+  // "0-1" = Black wins
+  // "1/2-1/2" = Draw
+  
+  if (result === '1/2-1/2') {
+    return ethers.ZeroAddress // Draw
+  }
+  
+  const winnerColor = result === '1-0' ? 'white' : 'black'
+  
+  // Match winner color to player address
+  if (winnerColor === 'white') {
+    return gameData.whitePlayer === creatorUsername 
+      ? creatorAddress 
+      : opponentAddress
+  } else {
+    return gameData.blackPlayer === creatorUsername
+      ? creatorAddress
+      : opponentAddress
+  }
+}
+```
+
+---
 
 ## 🧪 Testing
 
+### Run Tests
+
 ```bash
-# Test health endpoint
-curl http://localhost:3001/health
+# All tests
+npm test
 
-# Test Chess.com game fetch
-curl http://localhost:3001/api/chess/game/12345678
+# Watch mode
+npm test:watch
 
-# Test game validation
-curl -X POST http://localhost:3001/api/chess/validate-game \
-  -H "Content-Type: application/json" \
-  -d '{"gameId": "12345678"}'
-
-# Test proof generation
-curl -X POST http://localhost:3001/api/reclaim/generate-proof \
-  -H "Content-Type: application/json" \
-  -d '{"gameId": "12345678", "expectedWinner": "hikaru"}'
+# Coverage
+npm test:coverage
 ```
 
-## 📁 Project Structure
+### Test Structure
 
 ```
-backend/
-├── src/
-│   ├── middleware/
-│   │   ├── errorHandler.ts    # Global error handling
-│   │   ├── rateLimiter.ts     # Rate limiting middleware
-│   │   └── validation.ts      # Request validation
-│   ├── routes/
-│   │   ├── chess.ts           # Chess.com API routes
-│   │   └── reclaim.ts         # Reclaim Protocol routes
-│   ├── services/
-│   │   ├── chessService.ts    # Chess.com API integration
-│   │   └── reclaimService.ts  # Reclaim Protocol integration
-│   └── index.ts               # Main server file
-├── .env.example               # Environment variables template
-├── package.json               # Dependencies and scripts
-├── tsconfig.json              # TypeScript configuration
-└── README.md                  # This file
+tests/
+├── services/
+│   ├── autoVerification.test.ts
+│   ├── reclaim.test.ts
+│   └── chess.test.ts
+├── routes/
+│   └── api.test.ts
+└── utils/
+    └── helpers.test.ts
 ```
 
-## 🔒 Security Features
+### Example Test
 
-- **Rate Limiting**: Prevents API abuse
-- **Input Validation**: Zod schema validation for all inputs
-- **CORS Protection**: Configurable allowed origins
-- **Helmet**: Security headers
-- **Error Sanitization**: No sensitive data in error responses
+```typescript
+describe('AutoVerificationService', () => {
+  it('should determine winner correctly', () => {
+    const service = new AutoVerificationService()
+    
+    const winner = service.determineWinnerAddress(
+      { result: '1-0', whitePlayer: 'player1', blackPlayer: 'player2' },
+      '0xCreator',
+      '0xOpponent',
+      'player1',
+      'player2'
+    )
+    
+    expect(winner).toBe('0xCreator')
+  })
+})
+```
 
-## 🚨 Error Handling
+---
 
-The API returns consistent error responses:
+## 📊 Monitoring
 
-```json
-{
-  "error": "Error type",
-  "message": "Detailed error message",
-  "details": [/* Validation errors if applicable */]
+### Health Checks
+
+```bash
+# Check if server is running
+curl http://localhost:3001/api/health
+
+# Check verification service status
+curl http://localhost:3001/api/verification/status
+```
+
+### Logs
+
+```bash
+# View real-time logs
+tail -f logs/verification-$(date +%Y-%m-%d).log
+
+# Search for errors
+grep "ERROR" logs/*.log
+
+# Count verifications
+grep "Verification complete" logs/*.log | wc -l
+```
+
+### Metrics
+
+Track key metrics:
+- Wagers verified per hour
+- Average verification time
+- Success/failure rate
+- Gas costs
+
+---
+
+## 🔧 Configuration
+
+### Multi-Chain Support
+
+Add new chains in `autoVerificationService.ts`:
+
+```typescript
+private initializeChains(privateKey: string) {
+  // Add new chain
+  const newChainRpc = process.env.NEW_CHAIN_RPC_URL
+  const newChainVerifier = process.env.NEW_CHAIN_VERIFIER
+  const newChainFactory = process.env.NEW_CHAIN_FACTORY
+  
+  if (newChainRpc && newChainVerifier && newChainFactory) {
+    const provider = new ethers.JsonRpcProvider(newChainRpc)
+    const wallet = new ethers.Wallet(privateKey, provider)
+    
+    this.chains.set('new-chain', {
+      name: 'New Chain',
+      chainId: 12345,
+      rpcUrl: newChainRpc,
+      reclaimVerifier: newChainVerifier,
+      wagerFactory: newChainFactory
+    })
+    
+    this.providers.set('new-chain', provider)
+    this.wallets.set('new-chain', wallet)
+  }
 }
 ```
 
-Common HTTP status codes:
-- `200`: Success
-- `400`: Bad Request (validation errors)
-- `404`: Not Found
-- `429`: Too Many Requests (rate limited)
-- `500`: Internal Server Error
+### Cron Schedule
 
-## 🔗 Integration
+Modify check frequency:
 
-This backend integrates with:
-- **Reclaim Protocol**: ZK proof generation and verification
-- **Chess.com API**: Game data fetching and validation
-- **ChainMate Frontend**: React application
-- **Smart Contracts**: Ethereum/Base/Arbitrum contracts
+```typescript
+// Every minute (default)
+cron.schedule('* * * * *', () => {...})
 
-## 📝 Development Notes
+// Every 5 minutes
+cron.schedule('*/5 * * * *', () => {...})
 
-- Uses TypeScript for type safety
-- Implements singleton pattern for services
-- Includes comprehensive logging
-- Follows RESTful API conventions
-- Supports both development and production environments
+// Every hour
+cron.schedule('0 * * * *', () => {...})
+```
 
-## 🤝 Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+## 🚀 Deployment
 
-## 📄 License
+### Production Build
 
-MIT License - see LICENSE file for details
+```bash
+npm run build
+npm start
+```
+
+### Docker
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY dist ./dist
+
+EXPOSE 3001
+
+CMD ["node", "dist/index.js"]
+```
+
+### PM2 (Process Manager)
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start services
+pm2 start dist/index.js --name "chainmate-api"
+pm2 start dist/services/autoVerificationService.js --name "chainmate-verifier"
+
+# Monitor
+pm2 monit
+
+# Logs
+pm2 logs
+```
+
+### Environment-Specific Configs
+
+```bash
+# Development
+npm run dev
+
+# Staging
+NODE_ENV=staging npm start
+
+# Production
+NODE_ENV=production npm start
+```
+
+---
+
+## 🔒 Security
+
+### Best Practices
+
+- ✅ Private keys in environment variables (never commit)
+- ✅ Rate limiting on API endpoints
+- ✅ Input validation and sanitization
+- ✅ CORS configuration
+- ✅ Helmet.js for security headers
+- ✅ Error messages don't leak sensitive info
+
+### Rate Limiting
+
+```typescript
+import rateLimit from 'express-rate-limit'
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+})
+
+app.use('/api/', limiter)
+```
+
+---
+
+## 📚 Resources
+
+- [Express.js Documentation](https://expressjs.com/)
+- [Ethers.js Documentation](https://docs.ethers.org/)
+- [Reclaim Protocol](https://reclaimprotocol.org/)
+- [node-cron](https://github.com/node-cron/node-cron)
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Issue**: Verification service not finding wagers
+```bash
+# Check RPC connection
+curl $BASE_SEPOLIA_RPC_URL
+
+# Verify contract addresses
+# Check logs for connection errors
+```
+
+**Issue**: Chess.com API rate limiting
+```bash
+# Add delay between requests
+# Use caching for game data
+# Implement exponential backoff
+```
+
+**Issue**: Gas estimation failures
+```bash
+# Increase gas limit in contract calls
+# Check wallet has sufficient funds
+# Verify network congestion
+```
+
+---
+
+**Built with Node.js and ❤️**

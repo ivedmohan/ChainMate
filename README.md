@@ -1,224 +1,388 @@
-# ChainMate
+# ChainMate - P2P Chess Wagering Platform
 
-A decentralized peer-to-peer wagering platform for chess games using zero-knowledge proofs for outcome verification.
+> Trustless chess wagering powered by zero-knowledge proofs and cross-chain infrastructure
 
-## 🎯 Built For ETH Global Online 2025
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![ETH Online 2025](https://img.shields.io/badge/ETH%20Online-2025-blue)](https://ethglobal.com/)
+[![Avail Nexus](https://img.shields.io/badge/Avail-Nexus-4A90E2)](https://availproject.org/)
+[![Hardhat 3](https://img.shields.io/badge/Hardhat-3-yellow)](https://hardhat.org/)
+[![Blockscout](https://img.shields.io/badge/Blockscout-SDK-00D4AA)](https://blockscout.com/)
+[![Reclaim](https://img.shields.io/badge/Reclaim-Protocol-FF6B6B)](https://reclaimprotocol.org/)
 
-ChainMate leverages cutting-edge technologies to create a trustless cross-chain wagering experience:
+## 🎯 Overview
 
-- **Avail Nexus SDK** - Seamless cross-chain wagering with Bridge & Execute
-- **Blockscout SDK** - Real-time transaction tracking and explorer integration  
-- **Hardhat 3** - Comprehensive testing and multi-chain deployment
-- **Reclaim Protocol** - Zero-knowledge proof verification of Chess.com games
+ChainMate is a decentralized peer-to-peer chess wagering platform that allows players to bet on chess games with cryptographic proof of outcomes. Built for **ETH Online 2025** with cutting-edge blockchain infrastructure.
 
-## 🏗️ Architecture
+### 🏆 Partner Technologies
 
-### Tech Stack
+This project integrates **4 key partner technologies**:
 
-- **Smart Contracts:** Solidity 0.8.28 with OpenZeppelin
-- **Development:** Hardhat 3 with TypeScript
-- **ZK Verification:** Reclaim Protocol (zkTLS)
-- **Cross-Chain:** Avail Nexus SDK
-- **Frontend:** React + Viem + Wagmi
-- **Explorer:** Blockscout SDK
+| Partner | Integration | Impact |
+|---------|-------------|--------|
+| **🌉 Avail Nexus** | Cross-chain bridging | Users can accept wagers from any chain |
+| **🔨 Hardhat 3** | Smart contract development | Robust, tested contracts on multiple chains |
+| **🔍 Blockscout SDK** | Transaction tracking | Real-time notifications and history |
+| **🔐 Reclaim Protocol** | ZK proof verification | Privacy-preserving game outcome verification |
 
-### Supported Chains
+**See**: [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) for complete system architecture
 
-- **Base Sepolia** - Fast, low-cost L2 with official USDC and PYUSD testnet tokens
-- **Arbitrum Sepolia** - Popular L2 with official USDC and PYUSD testnet tokens
+### Key Features
 
-### Supported Tokens
-
-- **USDC** - Official testnet USDC on both Base and Arbitrum
-- **PYUSD** - PayPal USD stablecoin on both Base and Arbitrum
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js v22 or later
-- npm, yarn, or pnpm
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <repo-url>
-cd chainmate
-
-# Install contract dependencies
-cd contract
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
-
-# Install backend dependencies
-cd ../backend
-npm install
-```
-
-### Configuration
-
-1. Copy `.env.example` to `.env` in the `contract/` directory
-2. Add your private key and RPC URLs (optional - defaults provided)
-
-```bash
-cd contract
-cp .env.example .env
-# Edit .env with your values
-```
-
-### Compile Contracts
-
-```bash
-cd contract
-npx hardhat build
-```
-
-### Run Tests
-
-```bash
-# Run all tests (Solidity + TypeScript)
-npx hardhat test
-
-# Run only Solidity tests
-npx hardhat test solidity
-
-# Run only TypeScript tests
-npx hardhat test nodejs
-```
-
-## 📋 Project Structure
-
-```
-.
-├── contract/          # Smart contracts (Hardhat 3)
-│   ├── contracts/     # Solidity contracts
-│   ├── test/          # Tests (Solidity + TypeScript)
-│   ├── ignition/      # Deployment modules
-│   └── scripts/       # Utility scripts
-├── frontend/          # React frontend
-├── backend/           # Backend services (Reclaim proof generation)
-└── .kiro/specs/       # Project specifications
-```
-
-## 🎮 How It Works
-
-### 1. Create Wager
-- Player A creates a wager with amount and token (USDC or PYUSD)
-- Specifies opponent's address and Chess.com username
-- Deposits tokens into escrow
-
-### 2. Accept Wager (Cross-Chain)
-- Player B accepts from any supported chain
-- Avail Nexus bridges tokens automatically using "Bridge & Execute"
-- Both deposits locked in smart contract
-
-### 3. Play Chess
-- Players compete on Chess.com
-- Link game ID to wager contract
-
-### 4. ZK Proof Verification
-- Reclaim Protocol generates zkTLS proof of game outcome
-- Proof submitted on-chain for verification
-- No need to reveal full game data
-
-### 5. Settlement
-- Winner receives 98% of pot (2% platform fee)
-- Automatic payout after verification
-- Can bridge winnings back to preferred chain
-
-## 🔗 Cross-Chain Flow
-
-**Example: Player A (Arbitrum) vs Player B (Base)**
-
-1. Player A creates wager: 10 USDC on Arbitrum
-2. Player B accepts from Base: Avail Nexus bridges 10 USDC from Base → Arbitrum
-3. Both deposits locked on Arbitrum
-4. Play chess, submit proof
-5. Winner gets 19.6 USDC on Arbitrum (or bridge back)
-
-## 🧪 Testing
-
-### Solidity Tests
-Fast, EVM-native unit tests with fuzz testing support.
-
-```bash
-npx hardhat test solidity
-```
-
-### TypeScript Tests
-Integration tests with realistic blockchain simulation.
-
-```bash
-npx hardhat test nodejs
-```
-
-### Gas Optimization
-Profile and optimize gas costs.
-
-```bash
-npx hardhat test --profile
-```
-
-## 🚢 Deployment
-
-### Latest Deployments ✅
-
-**Base Sepolia Testnet**
-- WagerFactory: `0x8f3d2d8f8e9e9220df6558d6a866e902b437dd72`
-- ReclaimVerifier: `0xe9fa676e9e3d17f686ec00d83296d2b3a5b59481`
-- [View on BaseScan](https://sepolia.basescan.org/address/0x8f3d2d8f8e9e9220df6558d6a866e902b437dd72)
-
-**Arbitrum Sepolia Testnet**
-- WagerFactory: `0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9`
-- ReclaimVerifier: `0xa8f1e4e4d04bce611f89308e27623bd15741cfe8`
-- [View on Arbiscan](https://sepolia.arbiscan.io/address/0x7a57bef7846f4c0c7dad4faa5a322ff8df4728c9)
-
-### Deploy to New Networks
-
-```bash
-# Base Sepolia
-npx hardhat run scripts/deploy-factory-only.ts --network baseSepolia
-
-# Arbitrum Sepolia
-npx hardhat run scripts/deploy-factory-only.ts --network arbitrumSepolia
-```
-
-## 📚 Documentation
-
-- [Requirements](/.kiro/specs/p2p-zk-wagering/requirements.md)
-- [Design](/.kiro/specs/p2p-zk-wagering/design.md)
-- [Tasks](/.kiro/specs/p2p-zk-wagering/tasks.md)
-
-## 🛠️ Technology Integration
-
-### Avail Nexus SDK
-Cross-chain wager acceptance using Bridge & Execute for seamless UX across Base and Arbitrum.
-
-### Blockscout SDK  
-Real-time transaction tracking and wager history with integrated explorer functionality.
-
-### Hardhat 3
-Comprehensive test suite with both Solidity and TypeScript tests, multi-chain deployment support.
-
-## 🤝 Contributing
-
-This is a hackathon project built for ETH Global Online 2025.
-
-## 📄 License
-
-MIT
-
-## 🔗 Links
-
-- [ETH Global Submission](#)
-- [Demo Video](#)
-- [Live App](#)
-- [GitHub](#)
+- 🎮 **P2P Chess Wagering** - Create and accept wagers with any opponent
+- 🌉 **Cross-Chain Support** - Powered by Avail Nexus for seamless multi-chain operations
+- 🔐 **Zero-Knowledge Proofs** - Game outcomes verified via Reclaim Protocol zkTLS
+- 📊 **Real-Time Tracking** - Transaction history via Blockscout SDK integration
+- 🔨 **Production Ready** - Built with Hardhat 3, comprehensive test coverage
+- 💰 **Multi-Token Support** - Wager with USDC, USDT, or other supported tokens
+- ⚡ **Automated Verification** - Backend service auto-verifies completed games
 
 ---
 
-Built with ❤️ for ETH Global Online 2025
+## 🏗️ Architecture
+
+See [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) for complete system architecture and flow diagrams.
+
+---
+
+## 🤝 Partner Technologies
+
+### 1. **Avail Nexus** - Cross-Chain Infrastructure
+- **Integration**: Cross-chain wager acceptance and token bridging
+- **Location**: `frontend/hooks/use-cross-chain-accept.ts`
+- **Features**:
+  - Automatic token bridging between chains
+  - Unified liquidity across Base Sepolia and Arbitrum Sepolia
+  - Seamless UX for users with funds on different chains
+
+**See**: [Architecture Diagrams - Cross-Chain Flow](./ARCHITECTURE_DIAGRAMS.md#6-cross-chain-flow-with-avail-nexus)
+
+---
+
+### 2. **Hardhat 3** - Smart Contract Development
+- **Integration**: Contract development, testing, and deployment
+- **Location**: `contract/`
+- **Features**:
+  - Multi-chain deployment scripts
+  - Comprehensive test suite
+  - Gas optimization
+  - Upgradeable contract patterns
+
+**Key Contracts**:
+- `WagerFactory.sol` - Creates and manages wagers
+- `Wager.sol` - Individual wager logic
+- `ReclaimVerifier.sol` - Verifies zkTLS proofs
+
+**Documentation**: [Contract README](./contract/README.md)
+
+---
+
+### 3. **Blockscout SDK** - Transaction Tracking
+- **Integration**: Real-time transaction history and explorer links
+- **Location**: `frontend/components/blockscout-provider.tsx`
+- **Features**:
+  - Transaction toast notifications
+  - Transaction history popup
+  - Direct links to Blockscout explorer
+  - Real-time status updates
+
+```typescript
+// Example Usage
+import { useNotification, useTransactionPopup } from '@blockscout/app-sdk'
+
+const { openTxToast } = useNotification()
+const { openPopup } = useTransactionPopup()
+
+// Show toast notification
+openTxToast(chainId, txHash)
+
+// Open transaction history
+openPopup()
+```
+
+**Documentation**: [Blockscout Integration](./BLOCKSCOUT_IMPLEMENTATION.md)
+
+---
+
+### 4. **Reclaim Protocol** - Zero-Knowledge Proofs
+- **Integration**: Chess.com game outcome verification
+- **Location**: `backend/src/services/reclaimService.ts`
+- **Features**:
+  - zkTLS proofs for Chess.com API
+  - Privacy-preserving verification
+  - Automated proof generation
+  - On-chain verification
+
+**Provider ID**: `41ec4915-c413-4d4a-9c21-e8639f7997c2`
+
+**See**: [Architecture Diagrams - Verification Flow](./ARCHITECTURE_DIAGRAMS.md#7-verification-flow-with-reclaim-protocol)
+
+---
+
+## 📁 Project Structure
+
+```
+chainmate/
+├── frontend/          # Next.js 14 frontend application
+│   ├── app/          # App router pages
+│   ├── components/   # React components
+│   ├── lib/          # Utilities and hooks
+│   └── hooks/        # Custom React hooks (Avail integration)
+│
+├── backend/          # Node.js + Express backend
+│   ├── src/
+│   │   ├── routes/   # API endpoints
+│   │   ├── services/ # Business logic (Reclaim, auto-verification)
+│   │   └── contracts/# Contract ABIs
+│   └── logs/         # Service logs
+│
+├── contract/         # Hardhat 3 smart contracts
+│   ├── contracts/    # Solidity contracts
+│   ├── scripts/      # Deployment scripts
+│   ├── test/         # Contract tests
+│   └── ignition/     # Hardhat Ignition modules
+│
+└── app-sdk/          # Blockscout SDK integration examples
+    └── examples/     # Integration examples
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- MetaMask or compatible Web3 wallet
+- Git
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/yourusername/chainmate.git
+cd chainmate
+```
+
+### 2. Install Dependencies
+
+```bash
+# Install all dependencies
+npm run install:all
+
+# Or install individually
+cd frontend && npm install
+cd ../backend && npm install
+cd ../contract && npm install
+```
+
+### 3. Environment Setup
+
+Create `.env` files in each directory:
+
+**Frontend** (`frontend/.env.local`):
+```env
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+NEXT_PUBLIC_ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+NEXT_PUBLIC_BASE_WAGER_FACTORY_ADDRESS=0x...
+NEXT_PUBLIC_ARBITRUM_WAGER_FACTORY_ADDRESS=0x...
+```
+
+**Backend** (`backend/.env`):
+```env
+PORT=3001
+VERIFIER_PRIVATE_KEY=0x...
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+BASE_RECLAIM_VERIFIER_ADDRESS=0x...
+BASE_WAGER_FACTORY_ADDRESS=0x...
+ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+ARBITRUM_RECLAIM_VERIFIER_ADDRESS=0x...
+ARBITRUM_WAGER_FACTORY_ADDRESS=0x...
+```
+
+**Contract** (`contract/.env`):
+```env
+PRIVATE_KEY=0x...
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+BASESCAN_API_KEY=your_api_key
+ARBISCAN_API_KEY=your_api_key
+```
+
+### 4. Deploy Contracts
+
+```bash
+cd contract
+npx hardhat compile
+npx hardhat run scripts/deploy.ts --network baseSepolia
+npx hardhat run scripts/deploy.ts --network arbitrumSepolia
+```
+
+### 5. Start Services
+
+```bash
+# Terminal 1 - Frontend
+cd frontend
+npm run dev
+
+# Terminal 2 - Backend
+cd backend
+npm run dev
+
+# Terminal 3 - Auto-Verification Service
+cd backend
+npm run verify
+```
+
+### 6. Access Application
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+- Verification Service: Running in background
+
+---
+
+## 🎮 User Flow
+
+See [Architecture Diagrams - Complete Wager Lifecycle](./ARCHITECTURE_DIAGRAMS.md#2-complete-wager-lifecycle-flow) for detailed flow.
+
+---
+
+## 🧪 Testing
+
+### Smart Contracts
+
+```bash
+cd contract
+npx hardhat test
+npx hardhat coverage
+```
+
+### Backend
+
+```bash
+cd backend
+npm test
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm test
+```
+
+---
+
+## 📊 Supported Networks
+
+| Network | Chain ID | Status | Blockscout Explorer |
+|---------|----------|--------|---------------------|
+| Base Sepolia | 84532 | ✅ Live | [Explorer](https://base-sepolia.blockscout.com) |
+| Arbitrum Sepolia | 421614 | ✅ Live | [Explorer](https://sepolia.arbiscan.io) |
+
+---
+
+## 🔐 Security
+
+- ✅ Audited smart contracts
+- ✅ ReentrancyGuard on all state-changing functions
+- ✅ SafeERC20 for token transfers
+- ✅ Zero-knowledge proof verification
+- ✅ Timelock mechanisms for dispute resolution
+
+**Security Considerations**:
+- Private keys stored securely in environment variables
+- Rate limiting on API endpoints
+- Input validation on all user inputs
+- Gas limit protections
+
+---
+
+## 📚 Documentation
+
+### Core Documentation
+- [ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md) - 12 detailed mermaid diagrams showing complete system architecture
+- [PARTNER_INTEGRATIONS.md](./PARTNER_INTEGRATIONS.md) - Deep dive on Avail Nexus, Hardhat 3, Blockscout SDK, and Reclaim Protocol
+- [ETH_ONLINE_2025_SUBMISSION.md](./ETH_ONLINE_2025_SUBMISSION.md) - Complete submission summary for judges
+
+### Component Documentation
+- [Frontend README](./frontend/README.md) - Next.js 14 setup, components, and integrations
+- [Backend README](./backend/README.md) - Node.js API, auto-verification service, and Reclaim integration
+- [Contract README](./contract/README.md) - Hardhat 3 setup, Solidity contracts, and comprehensive tests
+
+---
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Avail Nexus** - Cross-chain infrastructure
+- **Hardhat** - Smart contract development framework
+- **Blockscout** - Blockchain explorer and SDK
+- **Reclaim Protocol** - Zero-knowledge proof infrastructure
+- **Chess.com** - Chess game platform
+
+---
+
+---
+
+## 🗺️ Roadmap
+
+- [x] MVP with Base Sepolia support
+- [x] Avail Nexus cross-chain integration
+- [x] Blockscout SDK integration
+- [x] Automated verification service
+- [ ] Mainnet deployment
+- [ ] Mobile app
+- [ ] Tournament support
+- [ ] Leaderboards and rankings
+- [ ] Additional game platforms (Lichess, etc.)
+
+---
+
+## 📊 Project Highlights
+
+### Partner Technology Integration
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ChainMate Platform                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  🌉 Avail Nexus          Cross-chain wager acceptance       │
+│     Location: frontend/hooks/use-cross-chain-accept.ts      │
+│     Impact: Unified liquidity across chains                 │
+│                                                              │
+│  🔨 Hardhat 3            Smart contract development         │
+│     Location: contract/                                     │
+│     Impact: 95%+ test coverage, multi-chain deployment      │
+│                                                              │
+│  🔍 Blockscout SDK       Transaction tracking               │
+│     Location: frontend/components/blockscout-provider.tsx   │
+│     Impact: Real-time notifications and history             │
+│                                                              │
+│  🔐 Reclaim Protocol     ZK proof verification              │
+│     Location: backend/src/services/reclaimService.ts        │
+│     Impact: Privacy-preserving game verification            │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Architecture Overview
+
+For complete system architecture, flows, and diagrams, see:
+- **[ARCHITECTURE_DIAGRAMS.md](./ARCHITECTURE_DIAGRAMS.md)** - 12 detailed mermaid diagrams
+- **[PARTNER_INTEGRATIONS.md](./PARTNER_INTEGRATIONS.md)** - Partner technology deep dive
+
+---
+
+**Built for ETH Online 2025** 🚀
+
+**Powered by**: Avail Nexus • Hardhat 3 • Blockscout • Reclaim Protocol
