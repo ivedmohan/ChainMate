@@ -38,7 +38,7 @@ function formatWagerData(wagerAddress: Address, wagerData: any, supportedTokens:
   const tokenInfo = supportedTokens.find(t => t.address.toLowerCase() === token.toLowerCase())
   
   // Map contract state to our frontend status
-  const getStatus = (state: number, winner: Address) => {
+  const getStatus = (state: number, winner: Address): "open" | "active" | "settled" | "canceled" => {
     switch(state) {
       case 0: return "open"      // Created
       case 1: return "active"    // Funded  
@@ -111,8 +111,10 @@ function WagersList({ userAddress }: { userAddress: Address }) {
     )
   }
 
-  const displayedWagers = wagerAddresses.slice(0, displayCount)
-  const hasMore = wagerAddresses.length > displayCount
+  // Reverse to show newest first
+  const reversedWagers = [...wagerAddresses].reverse()
+  const displayedWagers = reversedWagers.slice(0, displayCount)
+  const hasMore = reversedWagers.length > displayCount
 
   return (
     <div className="space-y-4">
@@ -195,6 +197,8 @@ function WagerDataCard({ wagerAddress, supportedTokens }: { wagerAddress: Addres
 
 function AvailableWagersList({ userAddress }: { userAddress: Address }) {
   const [displayCount, setDisplayCount] = useState(6)
+  const [filteredWagers, setFilteredWagers] = useState<Address[]>([])
+  const [processedWagers, setProcessedWagers] = useState<Set<Address>>(new Set())
   const supportedTokens = useSupportedTokens()
   const { data: allWagerAddresses, isLoading: isLoadingAll, error: allError } = useAllWagers(0, 50)
 
@@ -234,36 +238,79 @@ function AvailableWagersList({ userAddress }: { userAddress: Address }) {
     )
   }
 
-  // Filter out wagers created by current user and only show open wagers
-  const availableWagers = allWagerAddresses.filter((wagerAddress: Address) => {
-    // We'll check if this wager is open and not created by current user in the component
-    return true // Let the individual component handle filtering
-  })
-
-  const displayedWagers = availableWagers.slice(0, displayCount)
-  const hasMore = availableWagers.length > displayCount
+  // Check if all wagers have been processed
+  const allProcessed = allWagerAddresses.every(w => processedWagers.has(w))
+  const hasAvailableWagers = filteredWagers.length > 0
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        {displayedWagers.map((wagerAddress: Address) => (
+      {/* Show available wagers */}
+      {hasAvailableWagers && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {filteredWagers.slice(0, displayCount).map((wagerAddress: Address) => (
+            <AvailableWagerCard 
+              key={wagerAddress} 
+              wagerAddress={wagerAddress} 
+              supportedTokens={supportedTokens}
+              userAddress={userAddress}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Hidden rendering of all wagers to trigger filtering */}
+      <div style={{ display: 'none' }}>
+        {allWagerAddresses.map((wagerAddress: Address) => (
           <AvailableWagerCard 
             key={wagerAddress} 
             wagerAddress={wagerAddress} 
             supportedTokens={supportedTokens}
             userAddress={userAddress}
+            onFilterResult={(isAvailable) => {
+              // Mark this wager as processed
+              setProcessedWagers(prev => new Set(prev).add(wagerAddress))
+              
+              // Track which wagers are actually available
+              setFilteredWagers(prev => {
+                if (isAvailable && !prev.includes(wagerAddress)) {
+                  return [...prev, wagerAddress].reverse() // Newest first
+                } else if (!isAvailable && prev.includes(wagerAddress)) {
+                  return prev.filter(w => w !== wagerAddress)
+                }
+                return prev
+              })
+            }}
           />
         ))}
       </div>
-      {hasMore && (
+      
+      {/* Loading state while processing */}
+      {!allProcessed && (
+        <div className="flex justify-center pt-2">
+          <p className="text-sm text-muted-foreground">Checking available wagers...</p>
+        </div>
+      )}
+      
+      {/* Show "Load More" button if there are more filtered wagers */}
+      {hasAvailableWagers && filteredWagers.length > displayCount && (
         <div className="flex justify-center pt-2">
           <button
             onClick={() => setDisplayCount(prev => prev + 6)}
             className="px-6 py-2 text-sm font-medium border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            Load More ({availableWagers.length - displayCount} remaining)
+            Load More ({filteredWagers.length - displayCount} remaining)
           </button>
         </div>
+      )}
+      
+      {/* Show message if no available wagers after all are processed */}
+      {allProcessed && !hasAvailableWagers && (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">No wagers available to accept at the moment.</p>
+            <p className="text-xs text-muted-foreground mt-2">Wagers need to be funded by their creators before they can be accepted.</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
@@ -272,13 +319,46 @@ function AvailableWagersList({ userAddress }: { userAddress: Address }) {
 function AvailableWagerCard({ 
   wagerAddress, 
   supportedTokens, 
-  userAddress 
+  userAddress,
+  onFilterResult
 }: { 
   wagerAddress: Address
   supportedTokens: any[]
-  userAddress: Address 
+  userAddress: Address
+  onFilterResult?: (isAvailable: boolean) => void
 }) {
   const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
+
+  React.useEffect(() => {
+    if (!isLoading && onFilterResult) {
+      if (wagerData) {
+        const {
+          creator,
+          opponent,
+          state,
+          creatorDeposited
+        } = wagerData
+
+        // Only show wagers that:
+        // 1. Are in "Created" state (0) OR "Funded" state (1) if creator deposited
+        // 2. Were NOT created by current user
+        // 3. Don't have an opponent yet (opponent is zero address OR opponent is current user but not accepted)
+        // 4. Creator has deposited (creatorDeposited === true)
+        const isCreatedByUser = creator.toLowerCase() === userAddress.toLowerCase()
+        const isOpen = state === 0 || state === 1
+        const hasNoOpponent = opponent === "0x0000000000000000000000000000000000000000"
+        const creatorFunded = creatorDeposited === true
+
+        const isAvailable = !isCreatedByUser && isOpen && hasNoOpponent && creatorFunded
+        
+        onFilterResult(isAvailable)
+      } else {
+        // If no data, not available
+        onFilterResult(false)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, wagerData, userAddress, wagerAddress])
 
   if (isLoading) {
     return (
@@ -299,18 +379,21 @@ function AvailableWagerCard({
   const {
     creator,
     opponent,
-    state
+    state,
+    creatorDeposited
   } = wagerData
 
   // Only show wagers that:
-  // 1. Are in "Created" state (0)
+  // 1. Are in "Created" state (0) OR "Funded" state (1)
   // 2. Were NOT created by current user
   // 3. Don't have an opponent yet (opponent is zero address)
+  // 4. Creator has deposited (creatorDeposited === true)
   const isCreatedByUser = creator.toLowerCase() === userAddress.toLowerCase()
-  const isOpen = state === 0
+  const isOpen = state === 0 || state === 1
   const hasNoOpponent = opponent === "0x0000000000000000000000000000000000000000"
+  const creatorFunded = creatorDeposited === true
 
-  if (isCreatedByUser || !isOpen || !hasNoOpponent) {
+  if (isCreatedByUser || !isOpen || !hasNoOpponent || !creatorFunded) {
     return null // Hide this wager
   }
 
