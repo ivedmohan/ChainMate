@@ -17,11 +17,10 @@ import type { Address } from "viem"
 import { ClientOnly } from "@/components/client-only"
 import { WagerVerificationDetails } from "@/components/wager-verification-details"
 import { useTransactionPopup } from "@blockscout/app-sdk"
-import { TransactionProgressModal, type TransactionStep } from "@/components/transaction-progress-modal"
 
 const STATUS_COLORS = {
   open: "bg-blue-500",
-  active: "bg-green-500",
+  active: "bg-green-500", 
   settled: "bg-gray-500",
   canceled: "bg-red-500",
 } as const
@@ -33,22 +32,10 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
   const { wagerFactory } = useContractAddresses()
   const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
   const { openPopup } = useTransactionPopup()
-
+  
   const [opponentUsername, setOpponentUsername] = useState("")
   const [gameId, setGameId] = useState("")
-
-  // Auto-chain deposit flow state (for creator)
-  const [showDepositProgress, setShowDepositProgress] = useState(false)
-  const [depositSteps, setDepositSteps] = useState<TransactionStep[]>([])
-  const [currentDepositStep, setCurrentDepositStep] = useState(0)
-  const [depositProgressMessage, setDepositProgressMessage] = useState("")
-
-  // Auto-chain accept flow state (for opponent)
-  const [showAcceptProgress, setShowAcceptProgress] = useState(false)
-  const [acceptSteps, setAcceptSteps] = useState<TransactionStep[]>([])
-  const [currentAcceptStep, setCurrentAcceptStep] = useState(0)
-  const [acceptProgressMessage, setAcceptProgressMessage] = useState("")
-
+  
   // ALL HOOKS MUST BE CALLED UNCONDITIONALLY - BEFORE ANY RETURNS
   const { approve, isPending: isApproving, isConfirming: isConfirmingApprove, isSuccess: isApproveSuccess } = useApproveToken()
   const { deposit, isPending: isDepositing, isConfirming: isConfirmingDeposit, isSuccess: isDepositSuccess } = useDepositToWager()
@@ -276,7 +263,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     creatorDeposited,
     opponentDeposited
   } = wagerData
-
+  
   // Check user role
   const isCreator = userAddress?.toLowerCase() === creator.toLowerCase()
   const isOpponent = userAddress?.toLowerCase() === opponent.toLowerCase()
@@ -325,53 +312,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     }
   }
 
-  // Auto-chain: Approve + Accept in one smooth flow (for opponent)
-  const handleApproveAndAccept = async () => {
-    if (!opponentUsername.trim()) {
-      toast({ title: "Username required", description: "Please enter your Chess.com username", variant: "destructive" })
-      return
-    }
-    if (!tokenInfo) return
-
-    try {
-      // Initialize steps based on whether approval is needed
-      const initialSteps: TransactionStep[] = needsApproval ? [
-        { name: `Approve ${tokenInfo.symbol}`, status: 'pending' },
-        { name: 'Accept & Deposit', status: 'pending' }
-      ] : [
-        { name: 'Accept & Deposit', status: 'pending' }
-      ]
-
-      setAcceptSteps(initialSteps)
-      setCurrentAcceptStep(0)
-      setShowAcceptProgress(true)
-
-      // Step 1: Approve (if needed)
-      if (needsApproval) {
-        setAcceptSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'active' } : s))
-        setAcceptProgressMessage(`Approving ${tokenInfo.symbol}... Please confirm in your wallet`)
-
-        // Trigger approval
-        await approve(token as Address, wagerAddress, formattedAmount, tokenInfo.decimals)
-
-        // The rest will be handled by useEffect watching isApproveSuccess
-      } else {
-        // No approval needed, go straight to accept
-        setAcceptSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'active' } : s))
-        setAcceptProgressMessage("Accepting wager... Please confirm in your wallet")
-
-        await acceptWager(wagerAddress, opponentUsername)
-      }
-
-    } catch (error: any) {
-      console.error("Approve and accept flow error:", error)
-      setAcceptSteps(prev => prev.map((s, i) =>
-        i === currentAcceptStep ? { ...s, status: 'error', message: error?.message || 'Transaction failed' } : s
-      ))
-      setAcceptProgressMessage("")
-    }
-  }
-
   const handleCrossChainAccept = async () => {
     if (!opponentUsername.trim()) {
       toast({ title: "Username required", description: "Please enter your Chess.com username", variant: "destructive" })
@@ -411,171 +351,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
     }
   }
 
-  // Auto-chain: Approve + Deposit in one smooth flow
-  const handleApproveAndDeposit = async () => {
-    if (!tokenInfo) return
-
-    try {
-      // Initialize steps based on whether approval is needed
-      const initialSteps: TransactionStep[] = needsApproval ? [
-        { name: `Approve ${tokenInfo.symbol}`, status: 'pending' },
-        { name: 'Deposit Funds', status: 'pending' }
-      ] : [
-        { name: 'Deposit Funds', status: 'pending' }
-      ]
-
-      setDepositSteps(initialSteps)
-      setCurrentDepositStep(0)
-      setShowDepositProgress(true)
-
-      // Step 1: Approve (if needed)
-      if (needsApproval) {
-        setDepositSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'active' } : s))
-        setDepositProgressMessage(`Approving ${tokenInfo.symbol}... Please confirm in your wallet`)
-
-        // Trigger approval
-        await approve(token as Address, wagerAddress, formattedAmount, tokenInfo.decimals)
-
-        // The rest will be handled by useEffect watching isApproveSuccess
-      } else {
-        // No approval needed, go straight to deposit
-        setDepositSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'active' } : s))
-        setDepositProgressMessage("Depositing funds... Please confirm in your wallet")
-
-        await deposit(wagerAddress)
-      }
-
-    } catch (error: any) {
-      console.error("Approve and deposit flow error:", error)
-      setDepositSteps(prev => prev.map((s, i) =>
-        i === currentDepositStep ? { ...s, status: 'error', message: error?.message || 'Transaction failed' } : s
-      ))
-      setDepositProgressMessage("")
-    }
-  }
-
-  // Track approval success and proceed to deposit (for auto-chain deposit flow)
-  useEffect(() => {
-    if (isApproveSuccess && showDepositProgress && needsApproval && !showAcceptProgress) {
-      const stepIndex = 0 // Approval is always first step when needed
-      setDepositSteps(prev => prev.map((s, i) =>
-        i === stepIndex ? { ...s, status: 'success' } : s
-      ))
-      setCurrentDepositStep(stepIndex + 1)
-
-      // Auto-proceed to deposit
-      const timeoutId = setTimeout(async () => {
-        try {
-          const nextStepIndex = stepIndex + 1
-          setDepositSteps(prev => prev.map((s, i) => i === nextStepIndex ? { ...s, status: 'active' } : s))
-          setDepositProgressMessage("Depositing funds... Please confirm in your wallet")
-
-          await deposit(wagerAddress)
-
-          setDepositProgressMessage("Deposit submitted! Waiting for confirmation...")
-        } catch (error: any) {
-          console.error("Deposit error:", error)
-          const nextStepIndex = stepIndex + 1
-          setDepositSteps(prev => prev.map((s, i) =>
-            i === nextStepIndex ? { ...s, status: 'error', message: error?.message } : s
-          ))
-        }
-      }, 500)
-
-      return () => clearTimeout(timeoutId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isApproveSuccess, showDepositProgress])
-
-  // Track deposit success (for auto-chain deposit flow)
-  useEffect(() => {
-    if (isDepositSuccess && showDepositProgress && !showAcceptProgress) {
-      const stepIndex = needsApproval ? 1 : 0
-      setDepositSteps(prev => prev.map((s, i) =>
-        i === stepIndex ? { ...s, status: 'success' } : s
-      ))
-
-      // Show success message
-      setDepositProgressMessage("✓ Deposit successful! Wager is now funded.")
-
-      // Close modal after a moment
-      const timeoutId = setTimeout(() => {
-        toast({
-          title: "✓ Deposit successful!",
-          description: "Your wager is now funded and ready for opponent to accept.",
-        })
-        setShowDepositProgress(false)
-        setDepositSteps([])
-        setCurrentDepositStep(0)
-        setDepositProgressMessage("")
-      }, 2000)
-
-      return () => clearTimeout(timeoutId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDepositSuccess, showDepositProgress])
-
-  // Track approval success and proceed to accept (for auto-chain accept flow)
-  useEffect(() => {
-    if (isApproveSuccess && showAcceptProgress && needsApproval && !showDepositProgress) {
-      const stepIndex = 0 // Approval is always first step when needed
-      setAcceptSteps(prev => prev.map((s, i) =>
-        i === stepIndex ? { ...s, status: 'success' } : s
-      ))
-      setCurrentAcceptStep(stepIndex + 1)
-
-      // Auto-proceed to accept
-      const timeoutId = setTimeout(async () => {
-        try {
-          const nextStepIndex = stepIndex + 1
-          setAcceptSteps(prev => prev.map((s, i) => i === nextStepIndex ? { ...s, status: 'active' } : s))
-          setAcceptProgressMessage("Accepting wager... Please confirm in your wallet")
-
-          await acceptWager(wagerAddress, opponentUsername)
-
-          setAcceptProgressMessage("Wager accepted! Waiting for confirmation...")
-        } catch (error: any) {
-          console.error("Accept error:", error)
-          const nextStepIndex = stepIndex + 1
-          setAcceptSteps(prev => prev.map((s, i) =>
-            i === nextStepIndex ? { ...s, status: 'error', message: error?.message } : s
-          ))
-        }
-      }, 500)
-
-      return () => clearTimeout(timeoutId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isApproveSuccess, showAcceptProgress])
-
-  // Track accept success (for auto-chain accept flow)
-  useEffect(() => {
-    if (isAcceptSuccess && showAcceptProgress && !showDepositProgress) {
-      const stepIndex = needsApproval ? 1 : 0
-      setAcceptSteps(prev => prev.map((s, i) =>
-        i === stepIndex ? { ...s, status: 'success' } : s
-      ))
-
-      // Show success message
-      setAcceptProgressMessage("✓ Wager accepted successfully!")
-
-      // Close modal after a moment
-      const timeoutId = setTimeout(() => {
-        toast({
-          title: "✓ Wager accepted!",
-          description: "You're now part of this wager. Play your game on Chess.com!",
-        })
-        setShowAcceptProgress(false)
-        setAcceptSteps([])
-        setCurrentAcceptStep(0)
-        setAcceptProgressMessage("")
-      }, 2000)
-
-      return () => clearTimeout(timeoutId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAcceptSuccess, showAcceptProgress])
-
   const handleLinkGame = async () => {
     if (!gameId.trim()) {
       toast({ title: "Game ID required", description: "Please enter the Chess.com game ID", variant: "destructive" })
@@ -606,7 +381,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
             <CardTitle>Wager Details</CardTitle>
             <div className="flex items-center gap-2">
               <RefreshButton scope="current" wagerAddress={wagerAddress} />
-              <Badge className={statusDisplay.color}>{statusDisplay.label}</Badge>
+            <Badge className={statusDisplay.color}>{statusDisplay.label}</Badge>
             </div>
           </div>
         </CardHeader>
@@ -650,7 +425,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               )}
             </div>
           </div>
-
+          
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Created</Label>
@@ -746,24 +521,12 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                 onChange={(e) => setOpponentUsername(e.target.value)}
               />
             </div>
-
-            {/* Transaction Summary */}
-            {!isCrossChainAccept && (
-              <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg space-y-1">
-                <p className="text-xs font-medium">📋 Transaction Summary:</p>
-                <ul className="text-xs space-y-0.5 text-muted-foreground">
-                  <li>• {needsApproval ? '2' : '1'} transaction{needsApproval ? 's' : ''} required</li>
-                  <li>• Deposit: {formattedAmount} {tokenInfo?.symbol}</li>
-                </ul>
-              </div>
-            )}
-
+            
             <div className="flex gap-2">
               {isCrossChainAccept ? (
                 <Button
                   onClick={handleCrossChainAccept}
                   disabled={isCrossChainLoading || !opponentUsername.trim()}
-                  size="lg"
                   className="flex-1"
                 >
                   {isBridging ? (
@@ -775,14 +538,25 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
                   )}
                 </Button>
               ) : (
-                <Button
-                  onClick={handleApproveAndAccept}
-                  disabled={showAcceptProgress || !opponentUsername.trim()}
-                  size="lg"
+                <>
+              {needsApproval ? (
+                <Button 
+                  onClick={handleApprove}
+                  disabled={isApproving || isConfirmingApprove}
                   className="flex-1"
                 >
-                  {showAcceptProgress ? "Processing..." : `Approve & Accept ${formattedAmount} ${tokenInfo?.symbol}`}
+                      {isApproving || isConfirmingApprove ? "Approving..." : `Step 1: Approve ${tokenInfo?.symbol}`}
                 </Button>
+              ) : (
+                <Button 
+                  onClick={handleAcceptWager}
+                  disabled={isAccepting || isConfirmingAccept || !opponentUsername.trim()}
+                  className="flex-1"
+                >
+                      {isAccepting || isConfirmingAccept ? "Accepting..." : `Step 2: Accept & Deposit ${formattedAmount} ${tokenInfo?.symbol}`}
+                </Button>
+                  )}
+                </>
               )}
             </div>
 
@@ -813,23 +587,23 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               </ul>
             </div>
 
-            {/* Transaction Summary */}
-            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg space-y-1">
-              <p className="text-xs font-medium">📋 Transaction Summary:</p>
-              <ul className="text-xs space-y-0.5 text-muted-foreground">
-                <li>• {needsApproval ? '2' : '1'} transaction{needsApproval ? 's' : ''} required</li>
-                <li>• Deposit: {formattedAmount} {tokenInfo?.symbol}</li>
-              </ul>
-            </div>
-
-            <Button
-              onClick={handleApproveAndDeposit}
-              disabled={showDepositProgress}
-              size="lg"
-              className="w-full"
-            >
-              {showDepositProgress ? "Processing..." : `Approve & Deposit ${formattedAmount} ${tokenInfo?.symbol}`}
-            </Button>
+            {needsApproval ? (
+              <Button
+                onClick={handleApprove}
+                disabled={isApproving || isConfirmingApprove}
+                className="w-full"
+              >
+                {isApproving || isConfirmingApprove ? "Approving..." : `Step 1: Approve ${tokenInfo?.symbol}`}
+              </Button>
+            ) : (
+              <Button
+                onClick={handleDeposit}
+                disabled={isDepositing || isConfirmingDeposit}
+                className="w-full"
+              >
+                {isDepositing || isConfirmingDeposit ? "Depositing..." : `Step 2: Deposit ${formattedAmount} ${tokenInfo?.symbol}`}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -886,7 +660,7 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
               </p>
             </div>
 
-            <Button
+            <Button 
               onClick={handleLinkGame}
               disabled={isLinking || isConfirmingLink || !gameId.trim()}
               className="w-full"
@@ -998,38 +772,6 @@ function WagerDetailContent({ wagerAddress }: { wagerAddress: Address }) {
           </CardContent>
         </Card>
       )}
-
-      {/* Deposit Progress Modal (for creator) */}
-      <TransactionProgressModal
-        isOpen={showDepositProgress}
-        title="Depositing Your Stake"
-        steps={depositSteps}
-        currentStep={currentDepositStep}
-        message={depositProgressMessage}
-        onClose={() => {
-          setShowDepositProgress(false)
-          setDepositSteps([])
-          setCurrentDepositStep(0)
-          setDepositProgressMessage("")
-        }}
-        canClose={depositSteps.some(s => s.status === 'error') || depositSteps.every(s => s.status === 'success')}
-      />
-
-      {/* Accept Progress Modal (for opponent) */}
-      <TransactionProgressModal
-        isOpen={showAcceptProgress}
-        title="Accepting Wager"
-        steps={acceptSteps}
-        currentStep={currentAcceptStep}
-        message={acceptProgressMessage}
-        onClose={() => {
-          setShowAcceptProgress(false)
-          setAcceptSteps([])
-          setCurrentAcceptStep(0)
-          setAcceptProgressMessage("")
-        }}
-        canClose={acceptSteps.some(s => s.status === 'error') || acceptSteps.every(s => s.status === 'success')}
-      />
     </div>
   )
 }

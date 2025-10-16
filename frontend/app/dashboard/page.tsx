@@ -120,10 +120,11 @@ function WagersList({ userAddress }: { userAddress: Address }) {
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         {displayedWagers.map((wagerAddress: Address) => (
-          <WagerDataCard 
+          <MyWagerDataCard 
             key={wagerAddress} 
             wagerAddress={wagerAddress} 
             supportedTokens={supportedTokens}
+            userAddress={userAddress}
           />
         ))}
       </div>
@@ -190,6 +191,52 @@ function WagerDataCard({ wagerAddress, supportedTokens }: { wagerAddress: Addres
         </CardContent>
       </Card>
     )
+  }
+
+  return <WagerCard wager={formattedWager} />
+}
+
+function MyWagerDataCard({ wagerAddress, supportedTokens, userAddress }: { wagerAddress: Address, supportedTokens: any[], userAddress: Address }) {
+  const { data: wagerData, isLoading, error } = useWagerData(wagerAddress)
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <Skeleton className="h-4 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2 mb-4" />
+          <Skeleton className="h-8 w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error || !wagerData) {
+    return null
+  }
+
+  const {
+    creator,
+    opponent,
+    state,
+    opponentDeposited
+  } = wagerData
+
+  // Filter logic for "My Wagers":
+  // Hide if: You're the opponent BUT the wager is still in "Created" state (0) AND you haven't deposited yet
+  // This means the wager was created with your address as opponent, but you haven't accepted it yet
+  const isOpponent = opponent.toLowerCase() === userAddress.toLowerCase()
+  const isCreator = creator.toLowerCase() === userAddress.toLowerCase()
+  const isUnacceptedOpponentWager = isOpponent && !isCreator && state === 0 && !opponentDeposited
+
+  if (isUnacceptedOpponentWager) {
+    return null // Don't show in "My Wagers" - it should be in "Available Wagers" instead
+  }
+
+  const formattedWager = formatWagerData(wagerAddress, wagerData, supportedTokens)
+  
+  if (!formattedWager) {
+    return null
   }
 
   return <WagerCard wager={formattedWager} />
@@ -336,17 +383,20 @@ function AvailableWagerCard({
           creator,
           opponent,
           state,
-          creatorDeposited
+          creatorDeposited,
+          opponentDeposited
         } = wagerData
 
         // Only show wagers that:
         // 1. Are in "Created" state (0) OR "Funded" state (1) if creator deposited
         // 2. Were NOT created by current user
-        // 3. Don't have an opponent yet (opponent is zero address OR opponent is current user but not accepted)
+        // 3. Either: No opponent assigned OR opponent is you but you haven't accepted
         // 4. Creator has deposited (creatorDeposited === true)
         const isCreatedByUser = creator.toLowerCase() === userAddress.toLowerCase()
         const isOpen = state === 0 || state === 1
-        const hasNoOpponent = opponent === "0x0000000000000000000000000000000000000000"
+        const isZeroAddress = opponent === "0x0000000000000000000000000000000000000000"
+        const isOpponent = opponent.toLowerCase() === userAddress.toLowerCase()
+        const hasNoOpponent = isZeroAddress || (isOpponent && state === 0 && !opponentDeposited)
         const creatorFunded = creatorDeposited === true
 
         const isAvailable = !isCreatedByUser && isOpen && hasNoOpponent && creatorFunded
@@ -380,17 +430,20 @@ function AvailableWagerCard({
     creator,
     opponent,
     state,
-    creatorDeposited
+    creatorDeposited,
+    opponentDeposited
   } = wagerData
 
   // Only show wagers that:
   // 1. Are in "Created" state (0) OR "Funded" state (1)
   // 2. Were NOT created by current user
-  // 3. Don't have an opponent yet (opponent is zero address)
+  // 3. Either: No opponent assigned OR opponent is you but you haven't accepted
   // 4. Creator has deposited (creatorDeposited === true)
   const isCreatedByUser = creator.toLowerCase() === userAddress.toLowerCase()
   const isOpen = state === 0 || state === 1
-  const hasNoOpponent = opponent === "0x0000000000000000000000000000000000000000"
+  const isZeroAddress = opponent === "0x0000000000000000000000000000000000000000"
+  const isOpponent = opponent.toLowerCase() === userAddress.toLowerCase()
+  const hasNoOpponent = isZeroAddress || (isOpponent && state === 0 && !opponentDeposited)
   const creatorFunded = creatorDeposited === true
 
   if (isCreatedByUser || !isOpen || !hasNoOpponent || !creatorFunded) {
