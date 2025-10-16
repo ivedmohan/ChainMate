@@ -307,7 +307,9 @@ export class AutoVerificationService {
       const winnerAddress = this.determineWinnerAddress(
         gameData,
         wager.creator,
-        wager.opponent
+        wager.opponent,
+        wager.creatorUsername,
+        wager.opponentUsername
       );
 
       console.log(`   Winner address: ${winnerAddress || 'Draw (0x0...)'}`);
@@ -443,25 +445,74 @@ export class AutoVerificationService {
   private determineWinnerAddress(
     gameData: any,
     creatorAddress: string,
-    opponentAddress: string
+    opponentAddress: string,
+    creatorUsername: string,
+    opponentUsername: string
   ): string {
-    if (!gameData.winner) {
-      // Draw
+    const result = gameData.result;
+    const white = gameData.whitePlayer.toLowerCase();
+    const black = gameData.blackPlayer.toLowerCase();
+    const creator = creatorUsername.toLowerCase();
+    const opponent = opponentUsername.toLowerCase();
+
+    console.log(`   🎯 Determining winner from result: ${result}`);
+    console.log(`   White: ${white}, Black: ${black}`);
+    console.log(`   Creator: ${creator}, Opponent: ${opponent}`);
+
+    // Parse Chess.com result format
+    // "1-0" = White wins
+    // "0-1" = Black wins
+    // "1/2-1/2" = Draw
+    if (result === '1/2-1/2' || result === '1/2' || result === 'draw') {
+      console.log(`   Result: Draw`);
       return ethers.ZeroAddress;
     }
 
-    // Check which player won
-    const winnerUsername = gameData.winner.toLowerCase();
-    const creatorUsername = gameData.whitePlayer.toLowerCase();
-    const opponentUsername = gameData.blackPlayer.toLowerCase();
-
-    if (winnerUsername === creatorUsername) {
-      return creatorAddress;
-    } else if (winnerUsername === opponentUsername) {
-      return opponentAddress;
+    let winnerColor: 'white' | 'black' | null = null;
+    
+    if (result === '1-0') {
+      winnerColor = 'white';
+    } else if (result === '0-1') {
+      winnerColor = 'black';
+    } else {
+      console.error(`   ❌ Unknown result format: ${result}`);
+      return ethers.ZeroAddress;
     }
 
-    // Shouldn't reach here
+    console.log(`   Winner color: ${winnerColor}`);
+
+    // Determine which player was which color
+    const creatorIsWhite = white === creator;
+    const creatorIsBlack = black === creator;
+    const opponentIsWhite = white === opponent;
+    const opponentIsBlack = black === opponent;
+
+    console.log(`   Creator is ${creatorIsWhite ? 'white' : creatorIsBlack ? 'black' : 'unknown'}`);
+    console.log(`   Opponent is ${opponentIsWhite ? 'white' : opponentIsBlack ? 'black' : 'unknown'}`);
+
+    // Match winner color to player address
+    if (winnerColor === 'white') {
+      if (creatorIsWhite) {
+        console.log(`   ✅ Creator (white) wins!`);
+        return creatorAddress;
+      } else if (opponentIsWhite) {
+        console.log(`   ✅ Opponent (white) wins!`);
+        return opponentAddress;
+      }
+    } else if (winnerColor === 'black') {
+      if (creatorIsBlack) {
+        console.log(`   ✅ Creator (black) wins!`);
+        return creatorAddress;
+      } else if (opponentIsBlack) {
+        console.log(`   ✅ Opponent (black) wins!`);
+        return opponentAddress;
+      }
+    }
+
+    // Shouldn't reach here - username mismatch
+    console.error(`   ❌ Could not determine winner address!`);
+    console.error(`   Result: ${result}, White: ${white}, Black: ${black}`);
+    console.error(`   Creator: ${creator}, Opponent: ${opponent}`);
     return ethers.ZeroAddress;
   }
 
